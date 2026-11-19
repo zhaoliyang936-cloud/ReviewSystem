@@ -13,7 +13,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
-@Configuration public class SecurityConfig {
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+@Configuration @ConditionalOnWebApplication(type=ConditionalOnWebApplication.Type.SERVLET) public class SecurityConfig {
  @Bean SecurityFilterChain security(HttpSecurity http,IdentityService service)throws Exception{
   http.authorizeHttpRequests(a->a.requestMatchers("/api/health","/api/auth/csrf","/api/auth/register","/api/auth/login").permitAll().requestMatchers("/api/admin/**").hasRole("ADMIN").anyRequest().authenticated())
   .exceptionHandling(e->e.authenticationEntryPoint((req,res,ex)->securityError(res, 401, "UNAUTHORIZED", "Authentication required")).accessDeniedHandler((req,res,ex)->securityError(res, 403, "FORBIDDEN", "Access denied")))

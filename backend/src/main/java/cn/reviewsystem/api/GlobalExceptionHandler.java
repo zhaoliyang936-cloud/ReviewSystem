@@ -4,7 +4,12 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 @RestControllerAdvice public class GlobalExceptionHandler {
+ @ExceptionHandler(BusinessException.class) ResponseEntity<ApiError> business(BusinessException e) { return ResponseEntity.status(e.status()).body(new ApiError(e.code(),e.getMessage())); }
+ @ExceptionHandler(DataIntegrityViolationException.class) ResponseEntity<ApiError> conflict() { return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError("STATE_CONFLICT", "Data conflicts with the current state")); }
+ @ExceptionHandler(MaxUploadSizeExceededException.class) ResponseEntity<ApiError> uploadTooLarge() { return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(new ApiError("UPLOAD_INVALID", "Image exceeds the 5 MB limit")); }
  @ExceptionHandler(NoResourceFoundException.class) ResponseEntity<ApiError> notFound() { return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError("NOT_FOUND", "Resource not found")); }
  @ExceptionHandler(HttpRequestMethodNotSupportedException.class) ResponseEntity<ApiError> methodNotAllowed() { return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(new ApiError("METHOD_NOT_ALLOWED", "Method not allowed")); }
  @ExceptionHandler(HttpMessageNotReadableException.class) ResponseEntity<ApiError> badRequest() { return ResponseEntity.badRequest().body(new ApiError("BAD_REQUEST", "Invalid request body")); }

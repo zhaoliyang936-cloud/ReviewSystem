@@ -1,0 +1,15 @@
+{
+  "sourceLabel": "sample-paper",
+  "questions": [
+    {
+      "sourceQuestionNo": "1",
+      "knowledgePointId": "1",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {"stem": "Example stem", "options": [{"key": "A", "text": "One"}, {"key": "B", "text": "Two"}, {"key": "C", "text": "Three"}]},
+      "answer": {"correctOption": "A"},
+      "explanation": "Example explanation",
+      "sourceRef": "sample-paper-1"
+    }
+  ]
+}
