@@ -12,11 +12,15 @@ import PracticeNewPage from './practice/PracticeNewPage.vue'
 import PracticePage from './practice/PracticePage.vue'
 import PracticeResultPage from './practice/PracticeResultPage.vue'
 import PracticeHistoryPage from './practice/PracticeHistoryPage.vue'
+import MasteryOverviewPage from './mastery/MasteryOverviewPage.vue'
+import MasteryDetailPage from './mastery/MasteryDetailPage.vue'
 import './practice/practice.css'
 const router = createRouter({ history: createWebHistory(), routes: [
  { path: '/', component: Home },
  { path: '/practice/new', component: PracticeNewPage },
  { path: '/practice/history', component: PracticeHistoryPage },
+ { path: '/mastery', component: MasteryOverviewPage },
+ { path: '/mastery/:knowledgeId', component: MasteryDetailPage },
  { path: '/practice/:id/result', component: PracticeResultPage },
  { path: '/practice/:id', component: PracticePage },
  { path: '/admin', component: AdminLayout, redirect: '/admin/knowledge', children: [
