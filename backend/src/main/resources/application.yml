@@ -19,6 +19,12 @@ spring:
     password: ${DB_PASSWORD:}
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
 app:
+  question-assets:
+    directory: ${QUESTION_ASSET_DIR:${user.home}/.reviewsystem/question-assets}
   ai:
     enabled: ${AI_ENABLED:false}
