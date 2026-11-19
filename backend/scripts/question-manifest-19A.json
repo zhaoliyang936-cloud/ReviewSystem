@@ -1,0 +1,538 @@
+{
+  "sourceLabel": "19数据结构A",
+  "questions": [
+    {
+      "sourceQuestionNo": "1",
+      "knowledgePointId": "1",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "下面算法的时间复杂度为（  ）。\nint sumpower(int n){\n  int sum=0, i=1;\n  while(i<n){\n     sum+=i;\n     i=4*i;\n  }\n  return sum;\n}",
+        "options": [
+          {"key": "A", "text": "O(1)"},
+          {"key": "B", "text": "O(log4 n)"},
+          {"key": "C", "text": "O(n)"},
+          {"key": "D", "text": "O(n^2)"}
+        ]
+      },
+      "answer": {"correctOption": "B"},
+      "explanation": "i 每次乘 4，循环次数约为 log4 n，故时间复杂度为 O(log4 n)。",
+      "sourceRef": "19数据结构A 选择题1"
+    },
+    {
+      "sourceQuestionNo": "2",
+      "knowledgePointId": "3",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "设双向循环链表中结点的结构为（pre, data, next），且不带头结点。若在指针 p 所指结点之后插入结点 s，则应执行下列（  ）操作。",
+        "options": [
+          {"key": "A", "text": "p->next=s; s->pre=p; p->next->pre=s; s->next=p->next;"},
+          {"key": "B", "text": "p->next=s; p->next->pre=s; s->pre=p; s->next=p->next;"},
+          {"key": "C", "text": "s->pre=p; s->next=p->next; p->next=s; p->next->pre=s;"},
+          {"key": "D", "text": "s->pre=p; s->next=p->next; p->next->pre=s; p->next=s;"}
+        ]
+      },
+      "answer": {"correctOption": "D"},
+      "explanation": "先用 p->next 给 s->next 赋值，再改后继的 pre，最后改 p->next；顺序颠倒会让 p->next 已被覆盖。",
+      "sourceRef": "19数据结构A 选择题2"
+    },
+    {
+      "sourceQuestionNo": "3",
+      "knowledgePointId": "8",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "设 n 个元素的进栈序列是 p1, p2, p3, …, pn，其输出序列是 1, 2, 3, …, n，若 p3=1，则 p1 的值为（  ）。",
+        "options": [
+          {"key": "A", "text": "一定是 2"},
+          {"key": "B", "text": "可能是 2"},
+          {"key": "C", "text": "不可能是 3"},
+          {"key": "D", "text": "不可能是 2"}
+        ]
+      },
+      "answer": {"correctOption": "D"},
+      "explanation": "p3=1 说明 1 最先出栈，此时 p1、p2 已在栈中；若 p1=2 则 p2=3，出栈顺序将变成 1,3,2，与要求的 1,2,3 矛盾。",
+      "sourceRef": "19数据结构A 选择题3"
+    },
+    {
+      "sourceQuestionNo": "4",
+      "knowledgePointId": "12",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "已知一个二维数组 A[10][20]（下标从 0 开始）按列存储，其首地址为 2000，每个元素占用 4 个字节，元素 A[7][8] 的地址为（  ）。",
+        "options": [
+          {"key": "A", "text": "2088"},
+          {"key": "B", "text": "2087"},
+          {"key": "C", "text": "2347"},
+          {"key": "D", "text": "2348"}
+        ]
+      },
+      "answer": {"correctOption": "D"},
+      "explanation": "按列优先：偏移 =(8×10+7)×4=348，地址为 2000+348=2348。",
+      "sourceRef": "19数据结构A 选择题4"
+    },
+    {
+      "sourceQuestionNo": "5",
+      "knowledgePointId": "13",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "已知一棵 5 叉树中度为 1、2、3、4、5 的结点数分别为 6、2、3、4、5，则该 5 叉树的叶子结点数为（  ）。",
+        "options": [
+          {"key": "A", "text": "40"},
+          {"key": "B", "text": "41"},
+          {"key": "C", "text": "47"},
+          {"key": "D", "text": "48"}
+        ]
+      },
+      "answer": {"correctOption": "B"},
+      "explanation": "非叶子结点共 20 个，边数为 6×1+2×2+3×3+4×4+5×5=60，结点总数 61，叶子数 61−20=41。",
+      "sourceRef": "19数据结构A 选择题5"
+    },
+    {
+      "sourceQuestionNo": "6",
+      "knowledgePointId": "15",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "一棵具有 2099 个结点的完全二叉树的最大深度为（  ）。",
+        "options": [
+          {"key": "A", "text": "2099"},
+          {"key": "B", "text": "2098"},
+          {"key": "C", "text": "12"},
+          {"key": "D", "text": "13"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "2^11−1=2047<2099≤4095=2^12−1，故深度为 12。",
+      "sourceRef": "19数据结构A 选择题6"
+    },
+    {
+      "sourceQuestionNo": "7",
+      "knowledgePointId": "21",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "由关键字的集合 {55,33,60,100,40,70,80,75,45,10,88,69,86} 依次构造二叉排序树，则该二叉排序树的深度为（  ）。",
+        "options": [
+          {"key": "A", "text": "5"},
+          {"key": "B", "text": "6"},
+          {"key": "C", "text": "7"},
+          {"key": "D", "text": "8"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "逐次插入后最长路径为 55→60→100→70→80→88→86，共 7 层。",
+      "sourceRef": "19数据结构A 选择题7"
+    },
+    {
+      "sourceQuestionNo": "8",
+      "knowledgePointId": "13",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "设有 50 个权值，用它们构造哈夫曼树，则该哈夫曼树中共有（  ）个结点。",
+        "options": [
+          {"key": "A", "text": "99"},
+          {"key": "B", "text": "100"},
+          {"key": "C", "text": "49"},
+          {"key": "D", "text": "50"}
+        ]
+      },
+      "answer": {"correctOption": "A"},
+      "explanation": "n 个叶子的哈夫曼树没有度为 1 的结点，共 2n−1=99 个结点。",
+      "sourceRef": "19数据结构A 选择题8"
+    },
+    {
+      "sourceQuestionNo": "9",
+      "knowledgePointId": "21",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "已知关键字的集合 {50,15,70,18,46,…}，依次构造平衡二叉树，当插入 46 时引起不平衡，则采用的旋转类型为（  ）。",
+        "options": [
+          {"key": "A", "text": "LL"},
+          {"key": "B", "text": "LR"},
+          {"key": "C", "text": "RR"},
+          {"key": "D", "text": "RL"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "46 插在 18 的右子树上，形成 15→18→46 的右右链，做 RR 旋转。",
+      "sourceRef": "19数据结构A 选择题9"
+    },
+    {
+      "sourceQuestionNo": "10",
+      "knowledgePointId": "21",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "一棵深度为 9 的平衡二叉树最少有（  ）个结点。",
+        "options": [
+          {"key": "A", "text": "33"},
+          {"key": "B", "text": "54"},
+          {"key": "C", "text": "88"},
+          {"key": "D", "text": "143"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "N(h)=N(h−1)+N(h−2)+1，N(1)=1、N(2)=2，递推得 N(9)=88。",
+      "sourceRef": "19数据结构A 选择题10"
+    },
+    {
+      "sourceQuestionNo": "11",
+      "knowledgePointId": "18",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "已知 G=(V,E) 是一个无向连通图，其中 V={a,b,c,d,e,f,g}，E={(a,b),(a,c),(a,d),(a,g),(b,e),(c,f),(c,e),(d,e),(d,f)}。下面（  ）是深度优先搜索序列。",
+        "options": [
+          {"key": "A", "text": "abcdefg"},
+          {"key": "B", "text": "abecdfg"},
+          {"key": "C", "text": "abecfdg"},
+          {"key": "D", "text": "acedbgf"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "从 a 出发按 a→b→e→c→f→d→g 深度优先可访问全部顶点，得到 abecfdg。",
+      "sourceRef": "19数据结构A 选择题11"
+    },
+    {
+      "sourceQuestionNo": "12",
+      "knowledgePointId": "19",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "一个有 66 条边的非连通无向图，最少有（  ）个顶点。",
+        "options": [
+          {"key": "A", "text": "11"},
+          {"key": "B", "text": "12"},
+          {"key": "C", "text": "13"},
+          {"key": "D", "text": "14"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "12 个顶点的完全图恰有 66 条边且连通；再加一个孤立顶点即得非连通图，故最少 13 个。",
+      "sourceRef": "19数据结构A 选择题12"
+    },
+    {
+      "sourceQuestionNo": "13",
+      "knowledgePointId": "21",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "在二叉排序树上查找关键字为 55 的结点，假设该结点存在，则依次比较关键字有可能的是（  ）。",
+        "options": [
+          {"key": "A", "text": "70,75,50,55"},
+          {"key": "B", "text": "50,80,58,55"},
+          {"key": "C", "text": "40,99,30,55"},
+          {"key": "D", "text": "65,45,35,70,55"}
+        ]
+      },
+      "answer": {"correctOption": "B"},
+      "explanation": "查找路径必须满足区间约束：50<80 走左，58<80 走左，55<58 走左，序列 B 始终落在合法区间内。",
+      "sourceRef": "19数据结构A 选择题13"
+    },
+    {
+      "sourceQuestionNo": "14",
+      "knowledgePointId": "24",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "以下不是堆的序列是（  ）。",
+        "options": [
+          {"key": "A", "text": "110，95，108，87，90，70，92，50，30，20，76"},
+          {"key": "B", "text": "110，108，95，92，90，87，76，70，50，30，20"},
+          {"key": "C", "text": "20，30，50，70，76，87，90，92，95，108，110"},
+          {"key": "D", "text": "110，95，50，87，90，70，76，108，92，20，30"}
+        ]
+      },
+      "answer": {"correctOption": "D"},
+      "explanation": "D 中 50 的右孩子 76 大于 50，且 87 的孩子 108 大于 87，不满足大根堆性质。",
+      "sourceRef": "19数据结构A 选择题14"
+    },
+    {
+      "sourceQuestionNo": "15",
+      "knowledgePointId": "15",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "第 7 层上有 10 个叶子结点的完全二叉树不可能有（  ）个结点。",
+        "options": [
+          {"key": "A", "text": "73"},
+          {"key": "B", "text": "234"},
+          {"key": "C", "text": "235"},
+          {"key": "D", "text": "236"}
+        ]
+      },
+      "answer": {"correctOption": "D"},
+      "explanation": "高 7 层时 63+10=73；高 8 层时总数 127+k，第 7 层叶子 64−⌈k/2⌉=10，得 k=107 或 108，总数只能是 234 或 235。",
+      "sourceRef": "19数据结构A 选择题15"
+    },
+    {
+      "sourceQuestionNo": "16",
+      "knowledgePointId": "13",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "根据使用频率为 5 个字符设计的哈夫曼编码不可能是（  ）。",
+        "options": [
+          {"key": "A", "text": "111,110,10,01,00"},
+          {"key": "B", "text": "000,001,010,011,1"},
+          {"key": "C", "text": "100,11,10,1,0"},
+          {"key": "D", "text": "001,000,01,11,10"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "C 中 1 同时是 10、11 的前缀，违反前缀码要求，不可能是哈夫曼编码。",
+      "sourceRef": "19数据结构A 选择题16"
+    },
+    {
+      "sourceQuestionNo": "17",
+      "knowledgePointId": "20",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "散列地址空间为 m，关键字为 key，哈希函数为 H(key)=key mod p，为了减少冲突的频率，一般 p 为（  ）。",
+        "options": [
+          {"key": "A", "text": "小于 m 的最大奇数"},
+          {"key": "B", "text": "小于 m 的最大素数"},
+          {"key": "C", "text": "小于 m 的最大合数"},
+          {"key": "D", "text": "大于 m 的最小素数"}
+        ]
+      },
+      "answer": {"correctOption": "B"},
+      "explanation": "除留余数法中 p 取不大于 m 的最大素数，可让余数分布更均匀、冲突更少。",
+      "sourceRef": "19数据结构A 选择题17"
+    },
+    {
+      "sourceQuestionNo": "18",
+      "knowledgePointId": "22",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "长度为 70 的线性表采用顺序存储结构进行存储，并采用折半查找，则查找长度为 7 的元素个数有（  ）个。",
+        "options": [
+          {"key": "A", "text": "32"},
+          {"key": "B", "text": "31"},
+          {"key": "C", "text": "8"},
+          {"key": "D", "text": "7"}
+        ]
+      },
+      "answer": {"correctOption": "D"},
+      "explanation": "折半查找判定树各层结点数为 1,2,4,8,16,32,7，第 7 层共 7 个结点，查找长度均为 7。",
+      "sourceRef": "19数据结构A 选择题18"
+    },
+    {
+      "sourceQuestionNo": "19",
+      "knowledgePointId": "25",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "设有规模较大的各不相同的正整数组成的无序序列，顺序存储在一维数组中，采用（  ）算法能够最快找出其中最大的正整数。",
+        "options": [
+          {"key": "A", "text": "归并排序"},
+          {"key": "B", "text": "希尔排序"},
+          {"key": "C", "text": "冒泡排序"},
+          {"key": "D", "text": "快速排序"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "冒泡排序一趟比较 n−1 次即可把最大值移到末尾，无需完整排序，是四个选项中最早的。",
+      "sourceRef": "19数据结构A 选择题19"
+    },
+    {
+      "sourceQuestionNo": "20",
+      "knowledgePointId": "25",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "100 个数据元素，采用直接插入排序最好情况下要经过（  ）次比较。",
+        "options": [
+          {"key": "A", "text": "100"},
+          {"key": "B", "text": "99"},
+          {"key": "C", "text": "4950"},
+          {"key": "D", "text": "4951"}
+        ]
+      },
+      "answer": {"correctOption": "B"},
+      "explanation": "序列已有序时每个元素只与前一个比较一次，共 n−1=99 次。",
+      "sourceRef": "19数据结构A 选择题20"
+    },
+    {
+      "sourceQuestionNo": "F1",
+      "knowledgePointId": "15",
+      "type": "FILL",
+      "maxScore": 4,
+      "content": {
+        "stem": "一棵具有 300 个结点的完全二叉树，其最大深度为{{blank}}，有{{blank}}个叶子结点。"
+      },
+      "answer": {
+        "blanks": [
+          {"accepted": ["9"]},
+          {"accepted": ["150"]}
+        ]
+      },
+      "explanation": "前 8 层共 255 个结点，第 9 层 45 个结点；叶子数为 45+(128−23)=150。",
+      "sourceRef": "19数据结构A 填空题1"
+    },
+    {
+      "sourceQuestionNo": "F2",
+      "knowledgePointId": "13",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "一个有 6 棵树的森林，其第 1 棵至第 6 棵树的结点数分别为 9、10、20、10、9、18，由它们转换为二叉树，则对应二叉树的右子树上的结点数为{{blank}}。"
+      },
+      "answer": {"blanks": [{"accepted": ["67"]}]},
+      "explanation": "转换后第 1 棵树的根成为二叉树根，其余 5 棵树全部挂在右子树上，10+20+10+9+18=67。",
+      "sourceRef": "19数据结构A 填空题2"
+    },
+    {
+      "sourceQuestionNo": "F3",
+      "knowledgePointId": "13",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "设有权值的集合 {3,5,2,6,4,3,7}，以它们为叶子构造哈夫曼树，则该哈夫曼树的 WPL 为{{blank}}。"
+      },
+      "answer": {"blanks": [{"accepted": ["82"]}]},
+      "explanation": "依次合并 2+3=5、3+4=7、5+5=10、6+7=13、7+10=17、13+17=30，WPL 为各次合并值之和 82。",
+      "sourceRef": "19数据结构A 填空题3"
+    },
+    {
+      "sourceQuestionNo": "F4",
+      "knowledgePointId": "20",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "假定 50 个关键字互为同义词，若采用线性探测再散列把 50 个关键字存入散列表中，至少要进行{{blank}}次探查。"
+      },
+      "answer": {"blanks": [{"accepted": ["1275"]}]},
+      "explanation": "第 k 个关键字需探查 k 次，总次数 1+2+…+50=1275。",
+      "sourceRef": "19数据结构A 填空题4"
+    },
+    {
+      "sourceQuestionNo": "F5",
+      "knowledgePointId": "22",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "长度为 28 的线性表采用顺序存储结构进行存储，并采用折半查找，在等概率的情况下，查找成功时的平均查找长度为{{blank}}。"
+      },
+      "answer": {"blanks": [{"accepted": ["114/28", "57/14", "4.07"]}]},
+      "explanation": "判定树各层结点数为 1,2,4,8,13，ASL=(1×1+2×2+3×4+4×8+5×13)/28=114/28。",
+      "sourceRef": "19数据结构A 填空题5"
+    },
+    {
+      "sourceQuestionNo": "F6",
+      "knowledgePointId": "19",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "一个无向图有 30 条边，度为 4 的顶点有 5 个，度为 3 的顶点有 4 个，其余顶点的度数均小于等于 2，则该图中至少有{{blank}}个顶点。"
+      },
+      "answer": {"blanks": [{"accepted": ["23"]}]},
+      "explanation": "度数总和为 60，已用 5×4+4×3=32，剩余 28 度由度数不超过 2 的顶点分担，至少 14 个，合计 23 个。",
+      "sourceRef": "19数据结构A 填空题6"
+    },
+    {
+      "sourceQuestionNo": "F7",
+      "knowledgePointId": "23",
+      "type": "FILL",
+      "maxScore": 4,
+      "content": {
+        "stem": "已知关键字的集合 {44,60,25,80,8,10,2,86,50,40}，若采用归并排序对其进行从小到大排序，则经过第 2 趟归并排序的结果为{{blank}}；若采用选择排序从小到大排序，则经过第 2 趟选择排序的结果为{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {"accepted": ["25,44,60,80,2,8,10,86,40,50", "25 44 60 80 2 8 10 86 40 50"]},
+          {"accepted": ["2,8,25,80,60,10,44,86,50,40", "2 8 25 80 60 10 44 86 50 40"]}
+        ]
+      },
+      "explanation": "第 1 趟得到 [44,60][25,80][8,10][2,86][40,50]，第 2 趟四四归并为 [25,44,60,80][2,8,10,86][40,50]；选择排序第 2 趟后前两位已为 2、8。",
+      "sourceRef": "19数据结构A 填空题7"
+    },
+    {
+      "sourceQuestionNo": "F8",
+      "knowledgePointId": "25",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "在教材中所有的排序方法中，经过一趟排序不能确定任何元素的最终位置的排序方法有{{blank}}（仅写出一种排序方法即可）。"
+      },
+      "answer": {
+        "blanks": [
+          {"accepted": ["归并排序", "直接插入排序", "希尔排序", "基数排序", "归并", "直接插入", "希尔", "基数"]}
+        ]
+      },
+      "explanation": "归并、直接插入、希尔、基数排序一趟结束后都不能确定任何元素的最终位置；冒泡、选择、快速、堆排序一趟至少能定位一个元素。",
+      "sourceRef": "19数据结构A 填空题8"
+    },
+    {
+      "sourceQuestionNo": "Q1",
+      "knowledgePointId": "14",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "已知二叉树的中序序列为 DFBGEHAIKCLJNOM，先序序列为 ABDFEGHCIKJLMNO。（1）写出其对应的二叉树；（2）写出后序序列；（3）写出该二叉树对应的森林。"
+      },
+      "answer": {
+        "referenceAnswer": "（1）A(B(D(,F),E(G,H)),C(I(,K),J(L,M(N(,O)))))，括号内依次为左子树、右子树，逗号前为空表示无左孩子。\n（2）后序序列为 FDGHEBKILONMJCA。\n（3）对应森林共 4 棵：A(B(D,F),E(G),H)；C(I,K)；J(L)；M(N,O)。"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "由先序定根、中序分左右，还原出的二叉树结构正确", "score": 4},
+          {"criterion": "后序序列 FDGHEBKILONMJCA 正确", "score": 2},
+          {"criterion": "按右链断开还原出 4 棵树，孩子与兄弟关系正确", "score": 2}
+        ]
+      },
+      "explanation": "先序首元素 A 为根，中序把序列分成左子树 DFBGEH 和右子树 IKCLJNOM，递归处理即可；二叉树转森林时把根结点右链断开，每段的左孩子变为第一个孩子、右链变为兄弟。",
+      "sourceRef": "19数据结构A 问答题1"
+    },
+    {
+      "sourceQuestionNo": "A1",
+      "knowledgePointId": "3",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "已知一个带头结点的循环链表存放一组整型数（链表中可能有重复值的结点），构造一个在链表中删除值等于 x 的所有结点的算法。函数原型为 void Deleteallx(lnode *&head, int x)。"
+      },
+      "answer": {
+        "referenceAnswer": "void Deleteallx(Lnode *&head, int x){\n    Lnode *pr = head, *p = head->next;\n    while (p != head) {\n        if (p->data == x) {\n            pr->next = p->next;\n            delete p;\n            p = pr->next;\n        } else {\n            pr = p;\n            p = p->next;\n        }\n    }\n}"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "利用头结点识别循环链表结束条件 p != head", "score": 2},
+          {"criterion": "删除结点后正确维护前驱 pr 与后继关系", "score": 3},
+          {"criterion": "不删除时同步推进 pr 与 p，循环能终止且不漏结点", "score": 2}
+        ]
+      },
+      "explanation": "循环链表没有 NULL 结尾，只能以回到头结点作为终止条件；删除后 p 直接指向 pr 的新后继，避免使用已释放结点。",
+      "sourceRef": "19数据结构A 算法设计1"
+    },
+    {
+      "sourceQuestionNo": "A2",
+      "knowledgePointId": "15",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "二叉树的存储结构如下：\ntypedef struct BITNode{\n  int data;\n  BITNode *lchild;\n  BITNode *rchild;\n}BITNode;\n试构造一个计算二叉树中值大于 x 的结点个数的算法。函数原型为 int countx(BITNode *t, int x)。"
+      },
+      "answer": {
+        "referenceAnswer": "int countx(BITNode *t, int x){\n    if (t == NULL) return 0;\n    return (t->data > x ? 1 : 0) + countx(t->lchild, x) + countx(t->rchild, x);\n}"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "空树返回 0 的递归出口正确", "score": 2},
+          {"criterion": "当前结点按 data > x 贡献 0 或 1，并累加左右子树", "score": 3},
+          {"criterion": "左右子树各只递归一次，不重复计数", "score": 2}
+        ]
+      },
+      "explanation": "遍历每个结点一次，命中条件贡献 1，否则贡献 0，再与左右子树结果相加即可。",
+      "sourceRef": "19数据结构A 算法设计2"
+    }
+  ]
+}
