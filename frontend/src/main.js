@@ -7,6 +7,9 @@ import AdminLayout from './admin/AdminLayout.vue'
 import KnowledgePage from './admin/KnowledgePage.vue'
 import QuestionListPage from './admin/QuestionListPage.vue'
 import QuestionEditorPage from './admin/QuestionEditorPage.vue'
+import MaterialListPage from './admin/MaterialListPage.vue'
+import MaterialEditorPage from './admin/MaterialEditorPage.vue'
+import MaterialSearchCheckPage from './admin/MaterialSearchCheckPage.vue'
 import CoveragePage from './admin/CoveragePage.vue'
 import PracticeNewPage from './practice/PracticeNewPage.vue'
 import PracticePage from './practice/PracticePage.vue'
@@ -34,6 +37,10 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: 'questions', component: QuestionListPage },
   { path: 'questions/new', component: QuestionEditorPage },
   { path: 'questions/:id', component: QuestionEditorPage },
+  { path: 'materials', component: MaterialListPage },
+  { path: 'materials/new', component: MaterialEditorPage },
+  { path: 'materials/search', component: MaterialSearchCheckPage },
+  { path: 'materials/:id', component: MaterialEditorPage },
   { path: 'coverage', component: CoveragePage }
  ]}
 ] })
