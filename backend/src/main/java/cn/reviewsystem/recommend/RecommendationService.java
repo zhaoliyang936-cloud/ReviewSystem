@@ -19,7 +19,7 @@ public class RecommendationService {
  RecommendationService(JdbcTemplate db,VersionedRecommendationConfig cfg,Clock clock){this.db=db;this.cfg=cfg;this.clock=clock;}
 
  public RecommendationDtos.Response recommend(long userId,int requested){
-  if(requested<1||requested>20)throw new IllegalArgumentException("count must be between 1 and 20");
+  if(requested<1||requested>cfg.maxCount())throw new IllegalArgumentException("count must be between 1 and "+cfg.maxCount());
   OffsetDateTime now=OffsetDateTime.ofInstant(clock.instant(),ZoneOffset.UTC);
   List<Kp> all=knowledge(userId,now);List<Kp> review=all.stream().filter(k->k.n>=cfg.reviewMinimumN()).sorted(reviewOrder()).toList();
   List<Kp> diagnostic=all.stream().filter(k->k.n<cfg.reviewMinimumN()).sorted(Comparator.comparingInt((Kp k)->k.n).thenComparingLong(k->k.id)).toList();
@@ -33,7 +33,7 @@ public class RecommendationService {
   List<RecommendationDtos.Item> items=new ArrayList<>();items.addAll(rp.items);items.addAll(dp.items);for(int i=0;i<items.size();i++){var x=items.get(i);items.set(i,new RecommendationDtos.Item(x.questionId(),x.questionNo(),x.knowledgeId(),x.knowledgeCode(),i,x.reason(),x.questionVersionId(),x.questionType(),x.origin()));}
   List<RecommendationDtos.Shortfall> shortfall=new ArrayList<>();int totalMissing=requested-items.size();if(totalMissing>0){String pool=rp.items.size()<reviewTarget?"REVIEW":dp.items.size()<diagnosticTarget?"DIAGNOSTIC":"TOTAL";shortfall.add(new RecommendationDtos.Shortfall(pool,totalMissing,"insufficient ACTIVE questions after cross-pool supplementation"));}
   List<RecommendationDtos.PlannedKnowledge> plan=new ArrayList<>();Set<String> plannedIds=new HashSet<>();for(RecommendationDtos.Item item:items){if(plannedIds.add(item.knowledgeId()))plan.add(new RecommendationDtos.PlannedKnowledge(item.knowledgeId(),item.knowledgeCode(),item.reason().pool(),item.reason().priority(),item.reason().n()));}
-  boolean updating=Boolean.TRUE.equals(db.queryForObject("SELECT EXISTS(SELECT 1 FROM rs_change_event e JOIN rs_practice p ON p.id=e.source_id WHERE e.event_type='PRACTICE_SUBMITTED' AND p.user_id=? AND e.state<>'DONE')",Boolean.class,userId));
+  boolean updating=Boolean.TRUE.equals(db.queryForObject("SELECT EXISTS(SELECT 1 FROM rs_change_event e WHERE e.state<>'DONE' AND ((e.event_type='PRACTICE_SUBMITTED' AND EXISTS(SELECT 1 FROM rs_practice p WHERE p.id=e.source_id AND p.user_id=?)) OR (e.event_type='TASK_SUBMITTED' AND EXISTS(SELECT 1 FROM rs_review_task t WHERE t.id=e.source_id AND t.user_id=?))))",Boolean.class,userId,userId));
   return new RecommendationDtos.Response(cfg.ruleVersion(),updating,parameters(),plan,List.copyOf(rp.items),List.copyOf(dp.items),List.copyOf(items),List.copyOf(shortfall));
  }
 
