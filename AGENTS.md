@@ -14,10 +14,8 @@
 | M04 普通练习与判分 | 已完成 |
 | M05 证据与掌握度 | 已完成（AI 综合判断待 M10） |
 | M06 推荐与解释 | 已完成，远端分支 `m06` = `01cd056` |
-| M07 复习任务 | **第一阶段代码在工作区，未提交** |
+| M07 复习任务 | 已完成并推送，远端 `M07` = `227a148` |
 | M08 资料检索 / M09 错题本 / M10 AI 辅导 | 未开始 |
-
-M07 第一阶段已实现：`MixSlotAllocator` 槽位分配器、M04 `mix_ratio_json` 新结构、V8 两张表、任务生成/详情/取消接口、`MasteryEventConsumer` 按 `event_type` 分派。全量 11 个测试类 83 项通过。**未做**：草稿、提交、结果页、推荐页、任务页。
 
 ## 环境事实
 
@@ -47,7 +45,7 @@ M07 第一阶段已实现：`MixSlotAllocator` 槽位分配器、M04 `mix_ratio_
 
 - 测试配置读环境变量 `DB_URL` / `DB_USER`（见 `backend/src/test/resources/application.properties`）。
 - **集成测试一律跑独立库**：`createdb rs_verify_xxx`，跑完 `dropdb`。**绝不写 `reviewsystem`**。
-- 真实库当前状态：Flyway **v7**、31 题、25 知识点、1 用户、11 条证据、3 条掌握度快照。V8 尚未应用到真实库（已在完整副本上验证 v7→v8 升级成功、数据零变化）。升级前备份：`.workbuddy/backup/reviewsystem-pre-v8-2026-11-21.sql`。
+- 真实库当前状态：Flyway **v10**（含 V8 复习任务表、V9 `rs_answer_asset` 任务项归属扩展、V10 `grading_status` 加入 `AI_REVIEW_FAILED`），31 题、25 知识点、63 条证据、29 条掌握度快照、5 条复习任务。升级 V11 前备份：`.workbuddy/backup/reviewsystem-pre-v11-2026-11-21.sql`。
 
 ## 不可违反的业务规则
 
