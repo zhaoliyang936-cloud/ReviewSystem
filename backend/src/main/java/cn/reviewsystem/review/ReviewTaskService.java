@@ -61,7 +61,8 @@ public class ReviewTaskService {
   if(request==null||request.draftVersion()==null)bad("draftVersion is required");
   TaskStateRow row=taskState(user,id,true);
   if(!row.status().equals("IN_PROGRESS"))conflict("Drafts can only be changed while the review task is in progress");
-  int updated=db.update("UPDATE rs_task_item SET draft_json=CAST(? AS jsonb),draft_version=draft_version+1 WHERE id=? AND task_id=? AND draft_version=?",writeNullable(request.answer()),itemId,id,request.draftVersion());
+  if(request.answer()==null||!request.answer().isObject()||request.answer().isEmpty())bad("answer must be a non-empty JSON object");
+  int updated=db.update("UPDATE rs_task_item SET draft_json=CAST(? AS jsonb),draft_version=draft_version+1 WHERE id=? AND task_id=? AND draft_version=?",write(request.answer()),itemId,id,request.draftVersion());
   if(updated==0){if(count("SELECT count(*) FROM rs_task_item WHERE id=? AND task_id=?",itemId,id)==0)notFound();conflict("Draft was changed by another request");}
   return new DraftView(request.answer(),request.draftVersion()+1);
  }

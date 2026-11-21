@@ -241,6 +241,9 @@ class ReviewTaskIntegrationTest {
   assertEquals("NOT_FOUND",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,999999999L,new ReviewTaskService.DraftRequest(ansA,0,null,null,null))).code());
   assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(ansA,null,null,null,null))).code());
   assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(ansA,1,"MANUAL",null,null))).code());
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(null,1,null,null,null))).code());
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(json.nullNode(),1,null,null,null))).code());
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(json.createObjectNode(),1,null,null,null))).code());
 
   // detail 必须回传草稿与版本号，否则前端无法做乐观锁
   var reloaded=tasks.detail(u,taskId).items().stream().filter(i->i.id().equals(String.valueOf(firstItemId))).findFirst().orElseThrow();
