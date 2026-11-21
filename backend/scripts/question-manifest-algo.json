@@ -1,0 +1,165 @@
+{
+  "sourceLabel": "算法设计题汇总",
+  "questions": [
+    {
+      "sourceQuestionNo": "A1",
+      "knowledgePointId": "4",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "删除带头结点的单循环链表中值等于 x 的结点，成功返回 1，否则返回 0。函数原型为 int DeleteX(Lnode *&head, int x)。"
+      },
+      "answer": {
+        "referenceAnswer": "int DeleteX(Lnode *&head, int x) {\n  Lnode *p = head->next;\n  Lnode *pre = head;\n  while (p != head) {\n    if (p->data == x) {\n      pre->next = p->next;\n      delete p;\n      return 1;\n    }\n    pre = p;\n    p = p->next;\n  }\n  return 0;\n}"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "正确初始化工作指针 p 与前驱指针 pre 并遍历单循环链表（p != head）", "score": 3},
+          {"criterion": "找到目标结点后正确断链释放并返回 1，未找到返回 0", "score": 4}
+        ]
+      },
+      "explanation": "利用单循环链表尾结点指向头结点的特点，设置前驱指针 pre 同步后移，查找到第一个 data == x 的结点后更新 pre->next 并释放结点返回 1。",
+      "sourceRef": "算法设计题汇总 算法设计1（分值为推定）"
+    },
+    {
+      "sourceQuestionNo": "A2",
+      "knowledgePointId": "4",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "合并 2 个带头结点的递增有序单循环链表 ha 和 hb，使结果保留在 ha 中且按值递增有序。函数原型为 void intersection(lnode *&ha, lnode *&hb)。"
+      },
+      "answer": {
+        "referenceAnswer": "void intersection(lnode *&ha, lnode *&hb) {\n  lnode *pa = ha->next, *pr = ha, *pb = hb->next, *s;\n  while(pa != ha && pb != hb) {\n    if(pa->data < pb->data) {\n      pr = pa;\n      pa = pa->next;\n    } else if(pa->data == pb->data) {\n      pr = pa;\n      pa = pa->next;\n      pb = pb->next;\n    } else {\n      s = new lnode;\n      s->data = pb->data;\n      pr->next = s;\n      s->next = pa;\n      pr = s;\n      pb = pb->next;\n    }\n  }\n  while(pb != hb) {\n    s = new lnode;\n    s->data = pb->data;\n    s->next = pr->next;\n    pr->next = s;\n    pr = s;\n    pb = pb->next;\n  }\n}"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "双指针同步遍历 ha 和 hb，按大小比较合并节点并去重", "score": 4},
+          {"criterion": "正确处理 hb 剩余结点追加到 ha 尾部并维持循环链表结构", "score": 3}
+        ]
+      },
+      "explanation": "使用双指针归并思想：pa->data < pb->data 时推进 pa；相等时跳过 hb 当前结点；否则将 pb 元素插入 pa 之前；最后将 hb 剩余元素接入 ha 尾部。",
+      "sourceRef": "算法设计题汇总 算法设计2（分值为推定）"
+    },
+    {
+      "sourceQuestionNo": "A3",
+      "knowledgePointId": "4",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "已知一个带头结点的单链表 ha 中存放一组整型数，结点类型为 (data,next)，构造一算法，将链表 ha 中值为偶数的结点加入链表 hb 中，且链表 hb 按值非递减排列。函数原型为 void inserthb(lnode *ha, lnode *&hb)。"
+      },
+      "answer": {
+        "referenceAnswer": "void inserthb(lnode *ha, lnode *&hb) {\n  hb = new lnode;\n  hb->next = NULL;\n  lnode *p = ha->next, *qr, *q, *s;\n  while(p) {\n    if(p->data % 2 == 0) {\n      qr = hb;\n      q = hb->next;\n      while(q && q->data <= p->data) {\n        qr = q;\n        q = q->next;\n      }\n      s = new lnode;\n      s->data = p->data;\n      s->next = q;\n      qr->next = s;\n    }\n    p = p->next;\n  }\n}"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "正确初始化带头结点的空单链表 hb", "score": 2},
+          {"criterion": "遍历 ha 筛选偶数结点并按非递减有序插入 hb", "score": 5}
+        ]
+      },
+      "explanation": "初始化带头结点的空单链表 hb 后遍历 ha，对所有满足 p->data % 2 == 0 的结点在 hb 中查找第一个大于该值的位置并执行前插。",
+      "sourceRef": "算法设计题汇总 算法设计3（分值为推定）"
+    },
+    {
+      "sourceQuestionNo": "A4",
+      "knowledgePointId": "4",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "有带头结点的递增有序单链表 heada 和 headb，存储的分别为数据集 A 和 B，要求完成求差集 A-B 的算法 void difference(heada, headb, n)（即完成从 A 的链表中删除 B 链表中数据的工作），同时返回最后 A 集合的元素个数 n。"
+      },
+      "answer": {
+        "referenceAnswer": "void difference(LNode *heada, LNode *headb, int &n) {\n  n = 0;\n  LNode *p = heada->next;\n  LNode *q = headb->next;\n  LNode *pre = heada, *u;\n  while (p != NULL && q != NULL) {\n    if (p->data < q->data) {\n      pre = p;\n      p = p->next;\n      n++;\n    } else if (p->data > q->data) {\n      q = q->next;\n    } else {\n      pre->next = p->next;\n      u = p;\n      p = p->next;\n      delete u;\n    }\n  }\n  while (p != NULL) {\n    n++;\n    p = p->next;\n  }\n}"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "利用双链表递增有序性分三种大小情况推进工作指针", "score": 4},
+          {"criterion": "相等时从 A 中删除并释放结点，最终准确统计 A 的剩余元素个数 n", "score": 3}
+        ]
+      },
+      "explanation": "通过双指针同步扫描有序单链表 A 和 B：A 小则保留并计数后移，B 小则推进 B，相等时借助 pre 断链释放 A 中结点，最后补计 A 剩余长度。",
+      "sourceRef": "算法设计题汇总 算法设计4（分值为推定）"
+    },
+    {
+      "sourceQuestionNo": "A5",
+      "knowledgePointId": "14",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "设计计算二叉树树高的递归算法。函数原型为 int hightbitree(BitNode *t)。"
+      },
+      "answer": {
+        "referenceAnswer": "int hightbitree(BitNode* t) {\n  if (t == NULL) return 0;\n  int lh = hightbitree(t->lchild);\n  int rh = hightbitree(t->rchild);\n  return (lh > rh ? lh : rh) + 1;\n}"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "空树递归出口返回 0", "score": 2},
+          {"criterion": "递归求左右子树高度并取最大值加 1 返回", "score": 5}
+        ]
+      },
+      "explanation": "二叉树高度等于左右子树高度的较大者加上根结点自身的 1 层；空树高度为 0。",
+      "sourceRef": "算法设计题汇总 算法设计5（分值为推定）"
+    },
+    {
+      "sourceQuestionNo": "A6",
+      "knowledgePointId": "21",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "设计返回二叉排序树中最小结点地址的递归和非递归算法。函数原型为 BITNode *FindMin(BITNode *t)。"
+      },
+      "answer": {
+        "referenceAnswer": "// 递归算法\nBITNode *FindMin(BITNode *t) {\n  if(t == NULL) return t;\n  else if(t->lchild == NULL) return t;\n  else return FindMin(t->lchild);\n}\n// 非递归算法\nBITNode *FindMinIter(BITNode *t) {\n  if(t != NULL)\n    while(t->lchild != NULL)\n      t = t->lchild;\n  return t;\n}"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "递归法正确处理空树与左子树为空的基例", "score": 3},
+          {"criterion": "非递归法沿左孩子指针一路向左直到 lchild == NULL", "score": 4}
+        ]
+      },
+      "explanation": "由二叉排序树性质可知，树中最小值结点必然位于最左下角（无左孩子），因此只需不断沿 lchild 向下查找即可。",
+      "sourceRef": "算法设计题汇总 算法设计6（分值为推定）"
+    },
+    {
+      "sourceQuestionNo": "A7",
+      "knowledgePointId": "14",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "二叉树采用二叉链表作为存储结构，链表中结点的结构为：\ntypedef struct bitNode{\n  int data;\n  bitnode *lt;\n  bitnode *rt;\n}bitNode;\n构造一个计算二叉树中度为 2 且结点的值小于 x 的结点个数的递归算法。函数原型为 int countx(bitNode *t, int x)。"
+      },
+      "answer": {
+        "referenceAnswer": "int countx(bitnode *t, int x) {\n  if(t) {\n    if(t->lt && t->rt && t->data < x)\n      return 1 + countx(t->lt, x) + countx(t->rt, x);\n    else\n      return countx(t->lt, x) + countx(t->rt, x);\n  } else return 0;\n}"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "空结点递归出口返回 0", "score": 2},
+          {"criterion": "准确判定度为 2 且值小于 x 的条件并累加左右子树递归计数", "score": 5}
+        ]
+      },
+      "explanation": "先序递归遍历二叉树，当结点同时具有左右孩子（t->lt && t->rt）且 t->data < x 时结果加 1，否则仅累加左右子树的统计结果。",
+      "sourceRef": "算法设计题汇总 算法设计7（分值为推定）"
+    },
+    {
+      "sourceQuestionNo": "A8",
+      "knowledgePointId": "14",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "二叉树的存储结构如下：\ntypedef struct BITNode{\n  int data;\n  BITNode *lt;\n  BITNode *rt;\n}BITNode;\n试构造一个拷贝二叉树的递归算法。函数原型为 void btcopy(BITNode *s, BITNode *&t)。（注 s 为原二叉树，t 为拷贝后的二叉树）。"
+      },
+      "answer": {
+        "referenceAnswer": "void btcopy(BITNode *s, BITNode *&t) {\n  if(s == NULL) t = NULL;\n  else {\n    t = new BITNode;\n    t->data = s->data;\n    btcopy(s->lt, t->lt);\n    btcopy(s->rt, t->rt);\n  }\n}"
+      },
+      "rubric": {
+        "items": [
+          {"criterion": "当原树结点 s 为空时正确将目标指针 t 置为 NULL", "score": 2},
+          {"criterion": "动态分配新结点复制数据域，并递归拷贝左右子树", "score": 5}
+        ]
+      },
+      "explanation": "采用先序遍历思想同步创建目标二叉树：先为根结点分配内存并拷贝 data，再递归拷贝左子树 s->lt 到 t->lt 与右子树 s->rt 到 t->rt。",
+      "sourceRef": "算法设计题汇总 算法设计8（分值为推定）"
+    }
+  ]
+}

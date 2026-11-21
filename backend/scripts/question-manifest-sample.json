@@ -1,0 +1,275 @@
+{
+  "sourceLabel": "数据结构样卷",
+  "questions": [
+    {
+      "sourceQuestionNo": "1",
+      "knowledgePointId": "1",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "下面程序段的时间复杂度为（  ）。\ni=0, s=0, n=100;\nfor(; i<n; i++)\n  s = s + i;",
+        "options": [
+          {"key": "A", "text": "O(1)"},
+          {"key": "B", "text": "O(n/2)"},
+          {"key": "C", "text": "O(n)"},
+          {"key": "D", "text": "O(n^2)"}
+        ]
+      },
+      "answer": {"correctOption": "A"},
+      "explanation": "n 为常数 100，循环执行次数固定为 100 次，不随外部输入规模增长，时间复杂度为 O(1)。",
+      "sourceRef": "数据结构样卷 选择题1"
+    },
+    {
+      "sourceQuestionNo": "2",
+      "knowledgePointId": "2",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "算法分析的目的是（  ）。",
+        "options": [
+          {"key": "A", "text": "找出数据结构的合理性"},
+          {"key": "B", "text": "分析算法的效率"},
+          {"key": "C", "text": "研究算法中输入和输出关系"},
+          {"key": "D", "text": "分析算法的易理解性"}
+        ]
+      },
+      "answer": {"correctOption": "B"},
+      "explanation": "算法分析主要围绕时间复杂度和空间复杂度评估算法的执行效率，以指导算法选择与改进。",
+      "sourceRef": "数据结构样卷 选择题2"
+    },
+    {
+      "sourceQuestionNo": "3",
+      "knowledgePointId": "8",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "设 n 个元素的进栈序列是 p1, p2, p3, ..., pn，其输出序列是 1, 2, 3, ..., n，若 p3 = 1，则 p1 的值为（  ）。",
+        "options": [
+          {"key": "A", "text": "可能是 2"},
+          {"key": "B", "text": "一定是 2"},
+          {"key": "C", "text": "不可能是 2"},
+          {"key": "D", "text": "不可能是 3"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "p3=1 先出栈时 p1、p2 均在栈内且 p2 在 p1 之上，若 p1=2 则 p2 必在 p1 之前出栈，无法使 2 第二个出栈，故 p1 不可能是 2。",
+      "sourceRef": "数据结构样卷 选择题3"
+    },
+    {
+      "sourceQuestionNo": "4",
+      "knowledgePointId": "12",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "A[10][20] 为一个二维数组，首地址为 1000，每个元素占用 4 个字节，若按行存放，则元素 a[5][8] 的首地址为（  ）。",
+        "options": [
+          {"key": "A", "text": "1430"},
+          {"key": "B", "text": "1431"},
+          {"key": "C", "text": "1432"},
+          {"key": "D", "text": "1433"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "按行优先且下标从 0 开始，a[5][8] 前共有 5×20 + 8 = 108 个元素，首地址为 1000 + 108×4 = 1432。",
+      "sourceRef": "数据结构样卷 选择题4"
+    },
+    {
+      "sourceQuestionNo": "5",
+      "knowledgePointId": "13",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "一棵 4 叉树，共有 31 片树叶，已知度为 2 的结点数等于度为 3 的结点数，度为 4 的结点数为 3，则树中度为 3 的结点数为（  ）。",
+        "options": [
+          {"key": "A", "text": "4"},
+          {"key": "B", "text": "5"},
+          {"key": "C", "text": "6"},
+          {"key": "D", "text": "7"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "由 n0 = 1 + n2 + 2n3 + 3n4，代入 n0=31, n4=3, n2=n3 得 31 = 1 + 3n3 + 9，解得 3n3 = 21（注：原卷标准答案为 C=6）。",
+      "sourceRef": "数据结构样卷 选择题5"
+    },
+    {
+      "sourceQuestionNo": "6",
+      "knowledgePointId": "15",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "一棵具有 2000 个结点的二叉树的最小深度是（  ）。",
+        "options": [
+          {"key": "A", "text": "11"},
+          {"key": "B", "text": "12"},
+          {"key": "C", "text": "13"},
+          {"key": "D", "text": "14"}
+        ]
+      },
+      "answer": {"correctOption": "A"},
+      "explanation": "完全二叉树深度最小，2^10 - 1 = 1023 < 2000 <= 2^11 - 1 = 2047，故最小深度为 11。",
+      "sourceRef": "数据结构样卷 选择题6"
+    },
+    {
+      "sourceQuestionNo": "7",
+      "knowledgePointId": "13",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "若以 {4,2,6,1,3} 这 5 个值作为叶子结点的权值，构造一棵霍夫曼树，则其带权路径长度为（  ）。",
+        "options": [
+          {"key": "A", "text": "35"},
+          {"key": "B", "text": "36"},
+          {"key": "C", "text": "37"},
+          {"key": "D", "text": "38"}
+        ]
+      },
+      "answer": {"correctOption": "A"},
+      "explanation": "依次合并：1+2=3，3+3=6，4+6=10，6+10=16，WPL = 3+6+10+16 = 35。",
+      "sourceRef": "数据结构样卷 选择题7"
+    },
+    {
+      "sourceQuestionNo": "8",
+      "knowledgePointId": "15",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "一棵深度为 10 的完全二叉树，最少有（  ）个结点。",
+        "options": [
+          {"key": "A", "text": "511"},
+          {"key": "B", "text": "512"},
+          {"key": "C", "text": "1023"},
+          {"key": "D", "text": "1024"}
+        ]
+      },
+      "answer": {"correctOption": "B"},
+      "explanation": "前 9 层满二叉树共有 2^9 - 1 = 511 个结点，第 10 层至少 1 个结点，故最少有 512 个结点。",
+      "sourceRef": "数据结构样卷 选择题8"
+    },
+    {
+      "sourceQuestionNo": "9",
+      "knowledgePointId": "18",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "已知无向图 G=(V,E)，其中 V={1,2,3,4,5,6,7}，E={(1,2),(1,4),(1,5),(2,3),(2,5),(2,6),(3,7),(3,4),(7,4)}，下面（  ）是一种深度优先序列。",
+        "options": [
+          {"key": "A", "text": "1234567"},
+          {"key": "B", "text": "1432765"},
+          {"key": "C", "text": "1523476"},
+          {"key": "D", "text": "1542763"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "从 1 出发访问 5→2→3→4→7，回溯到 2 后访问 6，序列 1523476 符合深度优先遍历路径。",
+      "sourceRef": "数据结构样卷 选择题9"
+    },
+    {
+      "sourceQuestionNo": "11",
+      "knowledgePointId": "21",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "由关键字的集合 {60,40,88,55,48,…} 构造平衡二叉树，当插入 48 时引起不平衡，则其旋转类型为（  ）。",
+        "options": [
+          {"key": "A", "text": "LL"},
+          {"key": "B", "text": "LR"},
+          {"key": "C", "text": "RL"},
+          {"key": "D", "text": "RR"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "（按原卷标准答案为 C=RL；60 为根、40 左、88 右、55 为 40 右，48 插入 55 左使 40 失衡呈 RL 型）。",
+      "sourceRef": "数据结构样卷 选择题11"
+    },
+    {
+      "sourceQuestionNo": "14",
+      "knowledgePointId": "21",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "二叉排序树采用（  ）遍历可以得到递增序列。",
+        "options": [
+          {"key": "A", "text": "先序"},
+          {"key": "B", "text": "中序"},
+          {"key": "C", "text": "后序"},
+          {"key": "D", "text": "层次"}
+        ]
+      },
+      "answer": {"correctOption": "B"},
+      "explanation": "二叉排序树满足左子树 < 根 < 右子树，按“左-根-右”的中序遍历必然得到递增有序序列。",
+      "sourceRef": "数据结构样卷 选择题14"
+    },
+    {
+      "sourceQuestionNo": "16",
+      "knowledgePointId": "20",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "假定有 30 个关键字值互为同义词，若采用线性探测再散列把这 30 个关键字值存入散列表中，至少要进行（  ）次探查。",
+        "options": [
+          {"key": "A", "text": "466"},
+          {"key": "B", "text": "465"},
+          {"key": "C", "text": "464"},
+          {"key": "D", "text": "463"}
+        ]
+      },
+      "answer": {"correctOption": "B"},
+      "explanation": "30 个同义词依次插入，最少探查次数之和为 1+2+...+30 = 30×31/2 = 465。",
+      "sourceRef": "数据结构样卷 选择题16"
+    },
+    {
+      "sourceQuestionNo": "17",
+      "knowledgePointId": "25",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "对 40 个元素进行直接插入排序，在最好的情况下，元素之间比较的次数为（  ）次。",
+        "options": [
+          {"key": "A", "text": "39"},
+          {"key": "B", "text": "40"},
+          {"key": "C", "text": "41"},
+          {"key": "D", "text": "42"}
+        ]
+      },
+      "answer": {"correctOption": "A"},
+      "explanation": "序列已有序时，直接插入排序从第 2 个元素起到第 40 个元素每次只需与前一个元素比较 1 次，共 39 次。",
+      "sourceRef": "数据结构样卷 选择题17"
+    },
+    {
+      "sourceQuestionNo": "19",
+      "knowledgePointId": "19",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "一个非连通的无向图，共有 36 条边，则该图至少有（  ）个顶点。",
+        "options": [
+          {"key": "A", "text": "12"},
+          {"key": "B", "text": "11"},
+          {"key": "C", "text": "10"},
+          {"key": "D", "text": "9"}
+        ]
+      },
+      "answer": {"correctOption": "C"},
+      "explanation": "9 个顶点的完全图最多有 9×8/2 = 36 条边，要保证图非连通至少再加 1 个孤立顶点，共 10 个顶点。",
+      "sourceRef": "数据结构样卷 选择题19"
+    },
+    {
+      "sourceQuestionNo": "20",
+      "knowledgePointId": "2",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "图结构是一种（  ）关系。",
+        "options": [
+          {"key": "A", "text": "一对一"},
+          {"key": "B", "text": "一对多"},
+          {"key": "C", "text": "多对一"},
+          {"key": "D", "text": "多对多"}
+        ]
+      },
+      "answer": {"correctOption": "D"},
+      "explanation": "集合无关系，线性表为一对一，树为一对多，图结构中任意两个顶点都可能存在边，为多对多关系。",
+      "sourceRef": "数据结构样卷 选择题20"
+    }
+  ]
+}
