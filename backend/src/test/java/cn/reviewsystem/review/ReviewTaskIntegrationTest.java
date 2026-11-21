@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest @Transactional
 class ReviewTaskIntegrationTest {
- @Autowired JdbcTemplate db;@Autowired ReviewTaskService tasks;@Autowired MasteryEventConsumer consumer;@Autowired ObjectMapper json;@Autowired AnswerAssetService assets;@Autowired RecommendationService recommendations;@Autowired VersionedRecommendationConfig recCfg;@Autowired RecommendationController recController;@Autowired MasteryController masteryController;
+ @Autowired JdbcTemplate db;@Autowired ReviewTaskService tasks;@Autowired MasteryEventConsumer consumer;@Autowired ObjectMapper json;@Autowired AnswerAssetService assets;@Autowired RecommendationService recommendations;@Autowired VersionedRecommendationConfig recCfg;@Autowired RecommendationController recController;@Autowired MasteryController masteryController;@Autowired cn.reviewsystem.practice.GradingService grading;
 
  private static final String PREFIX="m07"+UUID.randomUUID().toString().replace("-","").substring(0,10);
  private static int seq;
@@ -179,7 +179,7 @@ class ReviewTaskIntegrationTest {
 
  @Test void customMixConfigAndRecommendationBoundsAndTaskUpdating(){
   long u=user();
-  var customTasks=new ReviewTaskService(db,json,recommendations,new PracticeMixConfig("v2",0.5,0.5),recCfg);
+  var customTasks=new ReviewTaskService(db,json,recommendations,new PracticeMixConfig("v2",0.5,0.5),recCfg,grading);
   var view=customTasks.create(u,"custom-mix",new ReviewTaskService.CreateRequest(6));
   assertEquals("v2",view.mixRatio().path("version").asText());
   assertEquals(0.5,view.mixRatio().path("ratio").path("bank").asDouble(),0.000001);
@@ -196,5 +196,138 @@ class ReviewTaskIntegrationTest {
   var page=masteryController.overview(auth,null,0,20).items();
   assertFalse(page.isEmpty());
   assertTrue(page.stream().allMatch(MasteryController.Overview::updating));
+ }
+
+ @Test void draftSubmitResultAndEvidenceLifecycle(){
+  long u=user(),other=user();
+  db.update("UPDATE rs_question SET status='SUSPENDED'");
+  long qChoice=db.queryForObject("INSERT INTO rs_question(subject_id,question_no,origin,status) VALUES (1,?,'MANUAL','ACTIVE') RETURNING id",Long.class,PREFIX+"-CH-"+seq);
+  long vChoice=db.queryForObject("INSERT INTO rs_question_version(question_id,version,subject_id,knowledge_point_id,type,max_score,content_json,answer_json,rubric_json,source_ref) VALUES (?,1,1,?,'CHOICE',5,CAST(? AS jsonb),CAST(? AS jsonb),NULL,?) RETURNING id",Long.class,qChoice,kpA,json.valueToTree(Map.of("stem","choice stem","options",List.of(Map.of("key","A","text","1"),Map.of("key","B","text","2"),Map.of("key","C","text","3")),"explanation","choice exp")).toString(),json.valueToTree(Map.of("correctOption","A")).toString(),PREFIX+"ch");
+  db.update("UPDATE rs_question SET current_version_id=? WHERE id=?",vChoice,qChoice);
+  long qFill=db.queryForObject("INSERT INTO rs_question(subject_id,question_no,origin,status) VALUES (1,?,'MANUAL','ACTIVE') RETURNING id",Long.class,PREFIX+"-FL-"+seq);
+  long vFill=db.queryForObject("INSERT INTO rs_question_version(question_id,version,subject_id,knowledge_point_id,type,max_score,content_json,answer_json,rubric_json,source_ref) VALUES (?,1,1,?,'FILL',5,CAST(? AS jsonb),CAST(? AS jsonb),NULL,?) RETURNING id",Long.class,qFill,kpA,json.valueToTree(Map.of("stem","fill {{blank}}","explanation","fill exp")).toString(),json.valueToTree(Map.of("blanks",List.of(Map.of("accepted",List.of("队列"))))).toString(),PREFIX+"fl");
+  db.update("UPDATE rs_question SET current_version_id=? WHERE id=?",vFill,qFill);
+  long qShort=db.queryForObject("INSERT INTO rs_question(subject_id,question_no,origin,status) VALUES (1,?,'MANUAL','ACTIVE') RETURNING id",Long.class,PREFIX+"-SH-"+seq);
+  long vShort=db.queryForObject("INSERT INTO rs_question_version(question_id,version,subject_id,knowledge_point_id,type,max_score,content_json,answer_json,rubric_json,source_ref) VALUES (?,1,1,?,'SHORT_ANSWER',10,CAST(? AS jsonb),CAST(? AS jsonb),CAST(? AS jsonb),?) RETURNING id",Long.class,qShort,kpB,json.valueToTree(Map.of("stem","short stem","explanation","short exp")).toString(),json.valueToTree(Map.of("referenceAnswer","ref")).toString(),json.valueToTree(Map.of("items",List.of(Map.of("criterion","c1","score",10)))).toString(),PREFIX+"sh");
+  db.update("UPDATE rs_question SET current_version_id=? WHERE id=?",vShort,qShort);
+
+  var created=tasks.create(u,"lifecycle",new ReviewTaskService.CreateRequest(3));
+  long taskId=Long.parseLong(created.id());
+  assertEquals(3,created.items().size());
+  long firstItemId=Long.parseLong(created.items().get(0).id());
+
+  // 2) 任务处于 READY 时写草稿 -> 409；7) 未完成时 result -> 409；未开始 submit -> 409
+  var ansA=json.valueToTree(Map.of("selectedOption","A"));
+  assertEquals("STATE_CONFLICT",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(ansA,0,null,null,null))).code());
+  assertEquals("STATE_CONFLICT",assertThrows(BusinessException.class,()->tasks.result(u,taskId)).code());
+  assertEquals("STATE_CONFLICT",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-early",new ReviewTaskService.SubmitRequest(List.of(),null,null,null))).code());
+
+  // 7) 他人任务 detail/draft/submit/result 均 404
+  assertEquals("NOT_FOUND",assertThrows(BusinessException.class,()->tasks.detail(other,taskId)).code());
+  assertEquals("NOT_FOUND",assertThrows(BusinessException.class,()->tasks.draft(other,taskId,firstItemId,new ReviewTaskService.DraftRequest(ansA,0,null,null,null))).code());
+  assertEquals("NOT_FOUND",assertThrows(BusinessException.class,()->tasks.submit(other,taskId,"sub-other",new ReviewTaskService.SubmitRequest(List.of(),null,null,null))).code());
+  assertEquals("NOT_FOUND",assertThrows(BusinessException.class,()->tasks.result(other,taskId)).code());
+
+  tasks.start(u,taskId);
+  assertEquals("STATE_CONFLICT",assertThrows(BusinessException.class,()->tasks.result(u,taskId)).code());
+
+  // 1) 草稿乐观锁：v0 成功返回 1；再用 v0 -> 409 STATE_CONFLICT；不存在的 itemId -> 404；参数校验 -> 400
+  var d1=tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(ansA,0,null,null,null));
+  assertEquals(1,d1.draftVersion());
+  assertEquals(ansA,d1.answer());
+  var conflictEx=assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(ansA,0,null,null,null)));
+  assertEquals("STATE_CONFLICT",conflictEx.code());
+  assertEquals("Draft was changed by another request",conflictEx.getMessage());
+  assertEquals("NOT_FOUND",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,999999999L,new ReviewTaskService.DraftRequest(ansA,0,null,null,null))).code());
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(ansA,null,null,null,null))).code());
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(ansA,1,"MANUAL",null,null))).code());
+
+  // 8) 附件上传准备
+  long choiceItemId=0,fillItemId=0,shortItemId=0;
+  for(var item:created.items()){
+   long iid=Long.parseLong(item.id());
+   switch(item.questionType()){
+    case "CHOICE"->choiceItemId=iid;
+    case "FILL"->fillItemId=iid;
+    case "SHORT_ANSWER"->shortItemId=iid;
+   }
+  }
+  assertTrue(choiceItemId>0&&fillItemId>0&&shortItemId>0);
+  byte[] png=Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+  var uploaded=assets.uploadForTask(u,taskId,shortItemId,new MockMultipartFile("file","s.png","image/png",png));
+
+  // 5) 塞一个不属于本任务的 itemId -> 400；重复 itemId -> 400；重复 assetId -> 400
+  final long cid=choiceItemId,sid=shortItemId;
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-bad-item",new ReviewTaskService.SubmitRequest(List.of(new ReviewTaskService.FinalAnswer("999999999",ansA,List.of())),null,null,null))).code());
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-dup-item",new ReviewTaskService.SubmitRequest(List.of(new ReviewTaskService.FinalAnswer(String.valueOf(cid),ansA,List.of()),new ReviewTaskService.FinalAnswer(String.valueOf(cid),ansA,List.of())),null,null,null))).code());
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-dup-asset",new ReviewTaskService.SubmitRequest(List.of(new ReviewTaskService.FinalAnswer(String.valueOf(sid),json.valueToTree(Map.of("text","my short")),List.of(uploaded.id(),uploaded.id()))),null,null,null))).code());
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-wrong-owner-asset",new ReviewTaskService.SubmitRequest(List.of(new ReviewTaskService.FinalAnswer(String.valueOf(cid),ansA,List.of(uploaded.id()))),null,null,null))).code());
+
+  // 4) & 8) 正常提交（CHOICE 传正确选项 A，FILL 故意不传验证写 JSON null 且判 false，SHORT_ANSWER 传文本+附件）
+  var submitBody=new ReviewTaskService.SubmitRequest(List.of(
+   new ReviewTaskService.FinalAnswer(String.valueOf(choiceItemId),ansA,List.of()),
+   new ReviewTaskService.FinalAnswer(String.valueOf(shortItemId),json.valueToTree(Map.of("text","my short answer")),List.of(uploaded.id()))
+  ),null,null,null);
+  var res1=tasks.submit(u,taskId,"sub-ok",submitBody);
+  assertEquals("COMPLETED",res1.status());
+  assertNotNull(res1.submittedAt());
+  assertEquals("COMPLETED",db.queryForObject("SELECT status FROM rs_review_task WHERE id=?",String.class,taskId));
+  assertEquals("COMPLETED",db.queryForObject("SELECT a.status FROM rs_review_task t JOIN rs_learning_activity a ON a.id=t.activity_id WHERE t.id=?",String.class,taskId));
+  assertEquals("SUBMITTED",db.queryForObject("SELECT state FROM rs_answer_asset WHERE id=?",String.class,Long.parseLong(uploaded.id())));
+  assertEquals("null",db.queryForObject("SELECT final_answer_json::text FROM rs_task_item WHERE id=?",String.class,fillItemId));
+
+  assertFalse(res1.items().isEmpty());
+  assertEquals(3,res1.items().size());
+  for(var ri:res1.items()){
+   assertFalse(ri.content().has("explanation"));
+   assertFalse(ri.explanation().isBlank());
+   if(ri.type().equals("CHOICE")){
+    assertEquals("AUTO_GRADED",db.queryForObject("SELECT grading_status FROM rs_task_item WHERE id=?",String.class,Long.parseLong(ri.itemId())));
+    assertTrue(ri.result().get("passed").isBoolean());
+    assertTrue(ri.result().get("passed").asBoolean());
+   }else if(ri.type().equals("FILL")){
+    assertEquals("AUTO_GRADED",db.queryForObject("SELECT grading_status FROM rs_task_item WHERE id=?",String.class,Long.parseLong(ri.itemId())));
+    assertTrue(ri.result().get("passed").isBoolean());
+    assertFalse(ri.result().get("passed").asBoolean());
+    assertTrue(ri.submittedAnswer().isNull());
+   }else if(ri.type().equals("SHORT_ANSWER")){
+    assertEquals("AI_REVIEW_PENDING",db.queryForObject("SELECT grading_status FROM rs_task_item WHERE id=?",String.class,Long.parseLong(ri.itemId())));
+    assertTrue(ri.result().get("passed").isNull());
+    assertTrue(ri.result().get("raw_score").isNull());
+    assertTrue(ri.result().get("normalized_score").isNull());
+    assertNotNull(ri.rubric());
+    assertFalse(ri.assets().isEmpty());
+    assertEquals(1,ri.assets().size());
+    assertTrue(ri.assets().get(0).url().startsWith("/api/answer-assets/"));
+   }
+  }
+
+  // 6) 提交后 rs_change_event 存在 TASK_SUBMITTED（source_revision = task.source_revision + 1）；消费后写 TASK 证据，updating 变 false
+  var auth=new UsernamePasswordAuthenticationToken(new IdentityService.User(u,PREFIX+"u","STUDENT",true,"s"),null,List.of());
+  assertEquals(1,db.queryForObject("SELECT count(*) FROM rs_change_event WHERE event_type='TASK_SUBMITTED' AND source_id=? AND state='PENDING'",Integer.class,taskId));
+  long taskSourceRev=db.queryForObject("SELECT source_revision FROM rs_review_task WHERE id=?",Long.class,taskId);
+  long eventSourceRev=db.queryForObject("SELECT source_revision FROM rs_change_event WHERE event_type='TASK_SUBMITTED' AND source_id=?",Long.class,taskId);
+  assertEquals(taskSourceRev+1,eventSourceRev);
+  assertTrue(recController.recommendations(auth,2).updating());
+  var masteryBefore=masteryController.overview(auth,null,0,20).items();
+  assertFalse(masteryBefore.isEmpty());
+  assertTrue(masteryBefore.stream().allMatch(MasteryController.Overview::updating));
+
+  assertTrue(consumer.processNext());
+  int evidenceCount=db.queryForObject("SELECT count(*) FROM rs_evidence WHERE source_type='TASK' AND submission_id=?",Integer.class,taskId);
+  assertEquals(2,evidenceCount);
+  assertFalse(recController.recommendations(auth,2).updating());
+  var masteryAfter=masteryController.overview(auth,null,0,20).items();
+  assertFalse(masteryAfter.isEmpty());
+  assertTrue(masteryAfter.stream().noneMatch(MasteryController.Overview::updating));
+
+  // 3) 提交幂等：同 key 同 body 重放，返回结果一致，且 rs_evidence 行数不变；同 key 改 body -> 409 IDEMPOTENCY_CONFLICT；不同 key -> 409 STATE_CONFLICT
+  var res2=tasks.submit(u,taskId,"sub-ok",submitBody);
+  assertEquals(json.valueToTree(res1),json.valueToTree(res2));
+  assertEquals(evidenceCount,db.queryForObject("SELECT count(*) FROM rs_evidence WHERE source_type='TASK' AND submission_id=?",Integer.class,taskId));
+  assertEquals(1,db.queryForObject("SELECT count(*) FROM rs_change_event WHERE event_type='TASK_SUBMITTED' AND source_id=?",Integer.class,taskId));
+  assertEquals("IDEMPOTENCY_CONFLICT",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-ok",new ReviewTaskService.SubmitRequest(List.of(),null,null,null))).code());
+  assertEquals("STATE_CONFLICT",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-other-key",submitBody)).code());
+  assertEquals(json.valueToTree(res1),json.valueToTree(tasks.result(u,taskId)));
  }
 }
