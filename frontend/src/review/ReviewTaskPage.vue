@@ -9,7 +9,7 @@ const submitKey=crypto.randomUUID()
 let timer
 
 const item=computed(()=>task.value?.items[index.value])
-const answer=computed({get:()=>answers.value[item.value?.id]||{},set:v=>{answers.value[item.value.id]=v}})
+const answer=computed({get:()=>ensureAnswer(item.value)||{},set:v=>{if(item.value)answers.value[item.value.id]=isPlainObject(v)?v:emptyAnswer(item.value)}})
 const mix=computed(()=>task.value?.mixRatio||null)
 const degradedCount=computed(()=>mix.value?.degraded?.length||0)
 
@@ -17,11 +17,20 @@ function blankCount(content){
  const stem=content?.stem||''
  return (stem.match(/\{\{blank\}\}/g)||[]).length||1
 }
-function initial(i){
- if(i.draft)return structuredClone(i.draft)
+function isPlainObject(v){return v!==null&&typeof v==='object'&&!Array.isArray(v)}
+function emptyAnswer(i){
  if(i.questionType==='CHOICE')return{selectedOption:''}
  if(i.questionType==='FILL')return{blanks:Array.from({length:blankCount(i.content)},()=>'')}
  return{text:'',code:''}
+}
+function ensureAnswer(i){
+ if(!i)return null
+ if(!isPlainObject(answers.value[i.id]))answers.value[i.id]=emptyAnswer(i)
+ return answers.value[i.id]
+}
+function initial(i){
+ if(isPlainObject(i.draft))return JSON.parse(JSON.stringify(i.draft))
+ return emptyAnswer(i)
 }
 async function load(){
  error.value=''
@@ -36,9 +45,10 @@ async function load(){
 async function save(){
  clearTimeout(timer)
  if(!item.value||task.value.status!=='IN_PROGRESS')return
+ const payload=ensureAnswer(item.value)
  saving.value=true;message.value=''
  try{
-  const saved=await api(`/api/review/tasks/${task.value.id}/items/${item.value.id}/draft`,{method:'PUT',body:{answer:answers.value[item.value.id],draftVersion:item.value.draftVersion}})
+  const saved=await api(`/api/review/tasks/${task.value.id}/items/${item.value.id}/draft`,{method:'PUT',body:{answer:payload,draftVersion:item.value.draftVersion}})
   item.value.draftVersion=saved.draftVersion
   message.value='已保存'
  }catch(e){
@@ -81,7 +91,7 @@ async function submit(){
  if(!confirm(left?`还有 ${left} 题未作答，仍要提交吗？`:'提交后不能再修改，继续吗？'))return
  submitting.value=true;error.value=''
  try{
-  await api(`/api/review/tasks/${task.value.id}/submit`,{method:'POST',headers:{'Idempotency-Key':submitKey},body:{answers:task.value.items.map(i=>({itemId:i.id,answer:answers.value[i.id],assetIds:(i.assets||[]).map(a=>a.id)}))}})
+  await api(`/api/review/tasks/${task.value.id}/submit`,{method:'POST',headers:{'Idempotency-Key':submitKey},body:{answers:task.value.items.map(i=>({itemId:i.id,answer:ensureAnswer(i),assetIds:(i.assets||[]).map(a=>a.id)}))}})
   router.push(`/review/tasks/${task.value.id}/result`)
  }catch(e){error.value=e.message}finally{submitting.value=false}
 }

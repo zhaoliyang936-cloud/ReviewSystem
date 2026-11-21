@@ -1,12 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { clearCsrf } from './api'
 const username=ref(''), password=ref(''), me=ref(null), message=ref(''), register=ref(false)
 let csrf
 async function token(){const r=await fetch('/api/auth/csrf'); if(!r.ok) throw Error(); csrf=await r.json()}
 async function request(path, body){await token(); return fetch(path,{method:'POST',headers:{'Content-Type':'application/json',[csrf.headerName]:csrf.token},body:JSON.stringify(body)})}
 async function refresh(){const r=await fetch('/api/me'); me.value=r.ok?await r.json():null}
-async function submit(){message.value='';try{const r=await request('/api/auth/'+(register.value?'register':'login'),{username:username.value,password:password.value});if(!r.ok){message.value=r.status===429?'尝试次数过多，请稍后再试':register.value?'注册失败，请检查用户名、密码或是否已注册':'登录失败，请检查账号状态和凭据';return}password.value='';if(register.value){register.value=false;message.value='注册成功，请登录'}else await refresh()}catch{message.value='无法连接服务'}}
-async function logout(){try{const r=await request('/api/auth/logout',{});if(!r.ok)throw Error();me.value=null;message.value='已退出'}catch{message.value='退出失败，请重试'}}
+async function submit(){message.value='';try{const r=await request('/api/auth/'+(register.value?'register':'login'),{username:username.value,password:password.value});if(!r.ok){message.value=r.status===429?'尝试次数过多，请稍后再试':register.value?'注册失败，请检查用户名、密码或是否已注册':'登录失败，请检查账号状态和凭据';return}password.value='';if(register.value){register.value=false;message.value='注册成功，请登录'}else{clearCsrf();await refresh()}}catch{message.value='无法连接服务'}}
+async function logout(){try{const r=await request('/api/auth/logout',{});if(!r.ok)throw Error();clearCsrf();me.value=null;message.value='已退出'}catch{message.value='退出失败，请重试'}}
 onMounted(refresh)
 </script>
 <template><main><h1>ReviewSystem</h1><template v-if="me"><p>已登录：{{me.username}}（{{me.role==='ADMIN'?'管理员':'学生'}}）</p><RouterLink v-if="me.role==='ADMIN'" class="admin-link" to="/admin">进入课程内容工作台</RouterLink><template v-else><RouterLink class="admin-link" to="/review">复习任务</RouterLink><RouterLink class="text-link" to="/practice/new">普通练习</RouterLink><RouterLink class="text-link" to="/practice/history">练习历史</RouterLink><RouterLink class="text-link" to="/mastery">掌握度</RouterLink></template><button @click="logout">退出登录</button></template><template v-else><h2>{{register?'学生注册':'登录'}}</h2><form @submit.prevent="submit"><label>用户名<input v-model="username" required minlength="3" maxlength="40" pattern="[A-Za-z0-9_]+" autocomplete="username"></label><label>密码<input v-model="password" type="password" required minlength="12" :autocomplete="register?'new-password':'current-password'"></label><p>用户名使用 3–40 个字母、数字或下划线；密码至少 12 个字符且不超过 72 字节。</p><button>{{register?'注册':'登录'}}</button></form><button class="secondary" @click="register=!register;message=''">{{register?'返回登录':'注册学生账号'}}</button></template><p role="status">{{message}}</p></main></template>
