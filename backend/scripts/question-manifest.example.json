@@ -11,5 +11,15 @@
       "explanation": "Example explanation",
       "sourceRef": "sample-paper-1"
     }
+  ],
+  "materials": [
+    {
+      "sourceFile": "3 栈和队列.pptx",
+      "location": "CH03-KP01",
+      "knowledgePointId": "8",
+      "title": "栈和队列-栈的基本操作",
+      "content": "栈（Stack）是只允许在表的一端进行插入和删除操作的线性表。\n\n栈的修改按后进先出（LIFO）的原则进行。",
+      "publish": true
+    }
   ]
 }
