@@ -24,11 +24,24 @@ public class QuestionAssetService {
  public AdminQuestionDetail.AssetView upload(long questionId,MultipartFile part){
   if(part==null||part.isEmpty()||part.getSize()>MAX_BYTES)invalid("Image must be non-empty and no larger than 5 MB");
   byte[] bytes;try{bytes=part.getBytes();}catch(IOException e){invalid("Unable to read image");return null;}
-  Decoded decoded=decode(bytes);var version=db.query("SELECT v.id FROM rs_question q JOIN rs_question_version v ON v.id=q.current_version_id WHERE q.id=? AND q.subject_id=1",(r,n)->r.getLong(1),questionId);if(version.isEmpty())throw new BusinessException(HttpStatus.NOT_FOUND,"NOT_FOUND","Question not found");long versionId=version.get(0);
+  var version=db.query("SELECT v.id FROM rs_question q JOIN rs_question_version v ON v.id=q.current_version_id WHERE q.id=? AND q.subject_id=1",(r,n)->r.getLong(1),questionId);if(version.isEmpty())throw new BusinessException(HttpStatus.NOT_FOUND,"NOT_FOUND","Question not found");
+  return storeFromBytes(version.get(0),bytes);
+ }
+ public void validateImageBytes(byte[] bytes,String expectedSha256){
+  if(bytes==null||bytes.length==0||bytes.length>MAX_BYTES)invalid("Image must be non-empty and no larger than 5 MB");
+  decode(bytes);
+  if(expectedSha256==null||!expectedSha256.trim().matches("[0-9a-fA-F]{64}"))invalid("Image sha256 must be a 64-character hex string");
+  String actual=sha256(bytes);
+  if(!actual.equalsIgnoreCase(expectedSha256.trim()))invalid("Image sha256 mismatch: expected "+expectedSha256.trim()+", actual "+actual);
+ }
+ @Transactional public AdminQuestionDetail.AssetView storeFromBytes(long versionId,byte[] bytes){
+  if(bytes==null||bytes.length==0||bytes.length>MAX_BYTES)invalid("Image must be non-empty and no larger than 5 MB");
+  Decoded decoded=decode(bytes);
   Integer count=db.queryForObject("SELECT count(*) FROM rs_question_asset WHERE question_version_id=?",Integer.class,versionId);if(count!=null&&count>=MAX_IMAGES)invalid("A question version can have at most 5 images");
   String key=java.util.UUID.randomUUID().toString().replace("-","")+decoded.extension();Path target=directory.resolve(key).normalize();if(!target.getParent().equals(directory))invalid("Invalid storage key");
   try{Files.createDirectories(directory);Files.write(target,bytes,StandardOpenOption.CREATE_NEW);}catch(IOException e){throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR,"UPLOAD_INVALID","Unable to store image");}
-  try{String sha=sha256(bytes);int position=count==null?0:count;Long id=db.queryForObject("INSERT INTO rs_question_asset(question_version_id,position,storage_key,mime,size_bytes,width,height,sha256) VALUES (?,?,?,?,?,?,?,?) RETURNING id",Long.class,versionId,position,key,decoded.mime(),bytes.length,decoded.width(),decoded.height(),sha);return new AdminQuestionDetail.AssetView(String.valueOf(id),position,decoded.mime(),bytes.length,decoded.width(),decoded.height(),sha);}catch(RuntimeException e){try{Files.deleteIfExists(target);}catch(IOException ignored){}throw e;}
+  if(TransactionSynchronizationManager.isSynchronizationActive())TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){@Override public void afterCompletion(int status){if(status!=STATUS_COMMITTED)deleteQuietly(target);}});
+  try{String sha=sha256(bytes);int position=count==null?0:count;Long id=db.queryForObject("INSERT INTO rs_question_asset(question_version_id,position,storage_key,mime,size_bytes,width,height,sha256) VALUES (?,?,?,?,?,?,?,?) RETURNING id",Long.class,versionId,position,key,decoded.mime(),bytes.length,decoded.width(),decoded.height(),sha);return new AdminQuestionDetail.AssetView(String.valueOf(id),position,decoded.mime(),bytes.length,decoded.width(),decoded.height(),sha);}catch(RuntimeException e){deleteQuietly(target);throw e;}
  }
  public AssetData read(long id){var rows=db.query("SELECT storage_key,mime FROM rs_question_asset WHERE id=?",(r,n)->new String[]{r.getString(1),r.getString(2)},id);if(rows.isEmpty())throw new BusinessException(HttpStatus.NOT_FOUND,"NOT_FOUND","Image not found");Path path=directory.resolve(rows.get(0)[0]).normalize();if(!path.getParent().equals(directory))throw new BusinessException(HttpStatus.NOT_FOUND,"NOT_FOUND","Image not found");try{return new AssetData(Files.readAllBytes(path),MediaType.parseMediaType(rows.get(0)[1]));}catch(IOException e){throw new BusinessException(HttpStatus.NOT_FOUND,"NOT_FOUND","Image not found");}}
  @Transactional public void copyVersionAssets(long oldVersionId,long newVersionId){

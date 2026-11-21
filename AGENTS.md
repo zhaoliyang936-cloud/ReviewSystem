@@ -15,7 +15,8 @@
 | M05 证据与掌握度 | 已完成（AI 综合判断待 M10） |
 | M06 推荐与解释 | 已完成，远端分支 `m06` = `01cd056` |
 | M07 复习任务 | 已完成并推送，远端 `M07` = `227a148` |
-| M08 资料检索 / M09 错题本 / M10 AI 辅导 | 未开始 |
+| M08 资料检索与离线导入 | 已完成（V11 迁移、`material` 包、管理端三页、离线导入扩展） |
+| M09 错题本 / M10 AI 辅导 | 未开始 |
 
 ## 环境事实
 
@@ -70,6 +71,9 @@
 7. **乐观锁**：`rs_chapter` 等表有 `version` 列，PUT 必须带 `expectedVersion`。
 8. **Flyway 只能由应用启动执行。** 用 psql 手工跑迁移不写 `flyway_schema_history`，之后 Flyway 会拒绝启动。
 9. **`@WebMvcTest` 是切片测试，不加载数据源，Flyway 不会执行。** 要验证迁移必须用 `@SpringBootTest`。
+10. **M08 切词规则**：`MaterialSearchService` 中文按连续 CJK 子串长度 ≥ 2 的二元组切分，英文/数字按 `[a-z0-9]+` 完整词提取，大小写不敏感；`query` 为空时仅按知识点过滤，非空但无有效词元返回空。
+11. **`material_id` 必须使用独立序列 `rs_material_id_seq`**：新增版本复用同一 `material_id` 递增 `version`，不得拿 `rs_material_version.id` 冒充 `material_id`，且编辑不可修改旧版本行。
+12. **离线导入幂等键与整批回滚**：资料幂等键为 `source_label`（如 `19A.pdf#p12`），同键同内容跳过计 `skipped`，同键不同内容报冲突并拒绝覆盖已发布版本；题图校验 SHA-256 后单事务写库，任一失败整批回滚（AC-34）。
 
 ## 已知待修
 
