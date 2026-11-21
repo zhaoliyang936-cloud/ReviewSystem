@@ -354,6 +354,16 @@
       "sourceRef": "2023数据结构A 填空题1"
     },
     {
+      "sourceQuestionNo": "F2",
+      "knowledgePointId": "19",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {"stem": "一个非连通的无向图，共有 153 条边，则该图至少有 {{blank}} 个顶点。"},
+      "answer": {"blanks": [{"accepted": ["19"]}]},
+      "explanation": "非连通图在边数固定时让顶点最少，等价于取一个 18 阶完全图（C(18,2)=153 条边）再加 1 个孤立顶点，故至少 19 个顶点。",
+      "sourceRef": "2023数据结构A 填空题2"
+    },
+    {
       "sourceQuestionNo": "F3",
       "knowledgePointId": "13",
       "type": "FILL",
