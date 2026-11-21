@@ -79,10 +79,10 @@ M07 第一阶段已实现：`MixSlotAllocator` 槽位分配器、M04 `mix_ratio_
 2. ~~`ReviewTaskService` 硬编码 0.7/0.3~~ **已修**：构造注入 `PracticeMixConfig`，`version` / `ratio.bank` / `ratio.ai` 全取配置。
 3. ~~题量上限三处不一致~~ **已修**：`VersionedRecommendationConfig` 新增 `publicMaxCount()=10`（对外 HTTP，对齐文档 205 行）与 `maxCount()=20`（内部规划容量）；controller 用前者，service 与 `ReviewTaskService.create` 用后者。
 4. ~~`updating` 未含 `TASK_SUBMITTED`~~ **已修**：两处 SQL 改为 `EXISTS(...)` + 两种事件各自按 `rs_practice` / `rs_review_task` 校 user，文档 205 行同步。
-5. **`ASSESSMENT_UPDATING` 拦截缺失**：技术设计第 185 行要求「锁 guard → 若评估仍有未处理事件则返回 `ASSESSMENT_UPDATING`」，`ReviewTaskService.create` 没做。评估未完成时会用旧快照生成任务。注意别和第 4 项的 `updating` 字段混为一谈：那个是响应里的展示字段，这个是拒绝生成。
+5. ~~`ASSESSMENT_UPDATING` 拦截缺失~~ **已补**：`ReviewTaskService.create` 在 `pg_advisory_xact_lock` 之后、读取推荐之前检查该用户是否仍有未 DONE 的 `PRACTICE_SUBMITTED` / `TASK_SUBMITTED` 事件，命中抛 409 `ASSESSMENT_UPDATING`。顺序有意为之：幂等重放先返回原任务，不受拦截影响。仍别和第 4 项的 `updating` 字段混为一谈——那个是响应里的展示字段，这个是拒绝生成。
 6. ~~任务里的主观题无法上传作答图片~~ **已在 V9 解决**：`rs_answer_asset` 新增可空 `task_item_id`、`practice_item_id` 放开 NOT NULL、加 CHECK `ck_rs_answer_asset_owner`（二者恰有其一）、`uq_rs_answer_asset_task_position`。「练习还是任务」由 `AnswerAssetService` 的 `Owner`（`PRACTICE` / `TASK`）决定，对外方法是 `upload` / `uploadForTask`、`delete` / `deleteForTask`。任务附件地址前缀 `/api/answer-assets/{id}`，练习仍是 `/api/practice-assets/{id}`。上传同样要求 activity 处于 `IN_PROGRESS`，所以任务必须先 `POST /api/review/tasks/{id}/start`。
 7. `Item.position` 是池内序号（已在 M07 落 `rs_task_item` 时按列表下标重排，M06 响应里仍是池内序号，读响应时注意）。
-8. **`grading_status` 缺 `AI_REVIEW_FAILED`**：技术设计第 191 行要求 AI 超时或失败时把题项置为 `AI_REVIEW_FAILED`，但 V6/V8 的 CHECK 只有 `NOT_STARTED` / `AUTO_GRADED` / `AI_REVIEW_PENDING`。M10 做主观题评分前必须补迁移放开该值（V9 已用于附件归属，需另起 V10）。
+8. ~~`grading_status` 缺 `AI_REVIEW_FAILED`~~ **已由 V10 解决**：`V10__grading_status_ai_review_failed.sql` 用 DO 块按 `pg_get_constraintdef` 搜出两张表上所有涉及 `grading_status` 的 CHECK 并重建为 `ck_rs_practice_item_grading_status` / `ck_rs_task_item_grading_status`，取值域加入 `AI_REVIEW_FAILED`。真实库副本验证 v7→v10 成功，数据零变化。M10 写这个值时不会再违反约束。
 9. ~~任务只有 start / cancel，没有草稿、提交、结果~~ **已解决**：`PUT /api/review/tasks/{id}/items/{itemId}/draft`（`draft_version` 乐观锁 + 仅 `IN_PROGRESS`）、`POST /api/review/tasks/{id}/submit`（幂等键 + `submit_hash`、客观题复用 `GradingService`、主观题 `AI_REVIEW_PENDING`、附件转 `SUBMITTED`、双写 `COMPLETED`、投递 `TASK_SUBMITTED` 且 `source_revision = task.source_revision + 1`）、`GET /api/review/tasks/{id}/result`（仅 `COMPLETED`）均已实现并有集成测试。
 10. **`POST /api/review/tasks` 的状态码与文档不符**：技术设计第 7 节写「固定混合组卷返回 202 准备，全部降级时 201」，实现是 `@ResponseStatus(CREATED)` 一律 201，且任务直接落 `READY`。AI 出题接入后（M10）必须区分 202 + `PREPARING`，届时改 controller 返回值而不是只改注解。
 11. **`rs_review_task.status` 没有 CHECK 约束**：V8 建表时只给了 `VARCHAR(24) DEFAULT 'READY'`，现在实际取值已含 `READY` / `IN_PROGRESS` / `CANCELLED` / `COMPLETED`。它和 `rs_learning_activity.status` 是两份，`start` / `cancel` / `submit` 三处都双写；新增状态时必须三处一起改，漏一处会出现「任务说完成、活动说进行中」。
@@ -93,7 +93,7 @@ M07 第一阶段已实现：`MixSlotAllocator` 槽位分配器、M04 `mix_ratio_
 - 报告必须附**实际执行的命令与实际输出**。不要用「已完成」「无问题」代替证据。测试结果要给 Surefire XML 的实际计数（测试类数、用例数、失败数、错误数），不能只说「全部通过」，也不能拿上一次的报告冒充本次。
 - 做不到的事直接说做不到。不要伪造输出，不要改用 `localhost` 绕过环境问题。
 - **测试不能伪造证据**：想验证「配置生效」就必须真的让 Spring 绑定（`@SpringBootTest(properties=...)` 或 `ApplicationContextRunner`），不能用 `MockEnvironment.resolvePlaceholders()` 手工算出值再 `new` 一个配置对象——那只能证明实现用了注入的配置对象，证明不了环境变量能改到它。断言集合时先断非空，`allMatch` 对空集合恒为 true。
-- 遇到以下操作先停下说明并等确认：修改 V1—V9 迁移、写入真实库 `reviewsystem`、重写 git 历史、force push。
+- 遇到以下操作先停下说明并等确认：修改 V1—V10 迁移、写入真实库 `reviewsystem`、重写 git 历史、force push。
 - 提交规范：分支名 `M<NN>`；仓库身份已配置为 `zero-0623`；**不要提交** `.codex/`、`学习资料/`、`import-report-19A.json`、`*.log`。
 - 文档随代码同步：改接口要更新 `docs/技术设计文档.md` 第 7 节接口表与对应里程碑状态行。
 
