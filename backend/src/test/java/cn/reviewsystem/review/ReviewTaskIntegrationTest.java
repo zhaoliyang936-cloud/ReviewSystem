@@ -1,9 +1,15 @@
 package cn.reviewsystem.review;
 
 import cn.reviewsystem.api.BusinessException;
+import cn.reviewsystem.mastery.MasteryController;
 import cn.reviewsystem.mastery.MasteryEventConsumer;
 import cn.reviewsystem.practice.ActiveActivityException;
 import cn.reviewsystem.practice.AnswerAssetService;
+import cn.reviewsystem.practice.PracticeMixConfig;
+import cn.reviewsystem.recommend.RecommendationController;
+import cn.reviewsystem.recommend.RecommendationService;
+import cn.reviewsystem.recommend.VersionedRecommendationConfig;
+import cn.reviewsystem.security.IdentityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
 import org.junit.jupiter.api.*;
@@ -12,12 +18,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.transaction.annotation.Transactional;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest @Transactional
 class ReviewTaskIntegrationTest {
- @Autowired JdbcTemplate db;@Autowired ReviewTaskService tasks;@Autowired MasteryEventConsumer consumer;@Autowired ObjectMapper json;@Autowired AnswerAssetService assets;
+ @Autowired JdbcTemplate db;@Autowired ReviewTaskService tasks;@Autowired MasteryEventConsumer consumer;@Autowired ObjectMapper json;@Autowired AnswerAssetService assets;@Autowired RecommendationService recommendations;@Autowired VersionedRecommendationConfig recCfg;@Autowired RecommendationController recController;@Autowired MasteryController masteryController;
 
  private static final String PREFIX="m07"+UUID.randomUUID().toString().replace("-","").substring(0,10);
  private static int seq;
@@ -168,5 +175,26 @@ class ReviewTaskIntegrationTest {
   assertEquals(2,db.queryForObject("SELECT count(*) FROM rs_answer_asset WHERE task_item_id=?",Integer.class,itemId).intValue());
   assertEquals("STATE_CONFLICT",assertThrows(BusinessException.class,()->tasks.cancel(u,taskId)).code());
   assertThrows(DataIntegrityViolationException.class,()->db.update("INSERT INTO rs_answer_asset(user_id,position,storage_key,mime,size_bytes,sha256) VALUES (?,0,?,?,?,?)",u,"orphan"+UUID.randomUUID(),"image/png",8,"0".repeat(64)));
+ }
+
+ @Test void customMixConfigAndRecommendationBoundsAndTaskUpdating(){
+  long u=user();
+  var customTasks=new ReviewTaskService(db,json,recommendations,new PracticeMixConfig("v2",0.5,0.5),recCfg);
+  var view=customTasks.create(u,"custom-mix",new ReviewTaskService.CreateRequest(6));
+  assertEquals("v2",view.mixRatio().path("version").asText());
+  assertEquals(0.5,view.mixRatio().path("ratio").path("bank").asDouble(),0.000001);
+  assertEquals(0.5,view.mixRatio().path("ratio").path("ai").asDouble(),0.000001);
+  assertEquals(3,view.mixRatio().path("planned").path("ai").asInt());
+  assertEquals(3,view.mixRatio().path("degraded").size());
+  var auth=new UsernamePasswordAuthenticationToken(new IdentityService.User(u,PREFIX+"u","STUDENT",true,"s"),null,List.of());
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->recController.recommendations(auth,0)).code());
+  assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->recController.recommendations(auth,11)).code());
+  assertEquals(10,recController.recommendations(auth,10).items().size());
+  long taskId=Long.parseLong(view.id());
+  db.update("INSERT INTO rs_change_event(event_type,source_id,source_revision,state) VALUES ('TASK_SUBMITTED',?,1,'PENDING')",taskId);
+  assertTrue(recController.recommendations(auth,10).updating());
+  var page=masteryController.overview(auth,null,0,20).items();
+  assertFalse(page.isEmpty());
+  assertTrue(page.stream().allMatch(MasteryController.Overview::updating));
  }
 }
