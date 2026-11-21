@@ -46,7 +46,7 @@
 
 - 测试配置读环境变量 `DB_URL` / `DB_USER`（见 `backend/src/test/resources/application.properties`）。
 - **集成测试一律跑独立库**：`createdb rs_verify_xxx`，跑完 `dropdb`。**绝不写 `reviewsystem`**。
-- 真实库当前状态：Flyway **v10**（含 V8 复习任务表、V9 `rs_answer_asset` 任务项归属扩展、V10 `grading_status` 加入 `AI_REVIEW_FAILED`），31 题、25 知识点、63 条证据、29 条掌握度快照、5 条复习任务。升级 V11 前备份：`.workbuddy/backup/reviewsystem-pre-v11-2026-11-21.sql`。
+- 真实库当前状态：Flyway **v10**（含 V8 复习任务表、V9 `rs_answer_asset` 任务项归属扩展、V10 `grading_status` 加入 `AI_REVIEW_FAILED`），31 题、25 知识点、63 条证据、29 条掌握度快照、5 条复习任务。**V11（资料表）与 V12（撤回审计列）已存在但尚未应用到真实库**，已在 `rs_verify_m08` 空库与真实库完整副本上验证 v10→v12 成功、数据零变化。升级前备份：`.workbuddy/backup/reviewsystem-pre-v11-2026-11-21.sql`。
 
 ## 不可违反的业务规则
 
@@ -89,13 +89,16 @@
 10. **`POST /api/review/tasks` 的状态码与文档不符**：技术设计第 7 节写「固定混合组卷返回 202 准备，全部降级时 201」，实现是 `@ResponseStatus(CREATED)` 一律 201，且任务直接落 `READY`。AI 出题接入后（M10）必须区分 202 + `PREPARING`，届时改 controller 返回值而不是只改注解。
 11. **`rs_review_task.status` 没有 CHECK 约束**：V8 建表时只给了 `VARCHAR(24) DEFAULT 'READY'`，现在实际取值已含 `READY` / `IN_PROGRESS` / `CANCELLED` / `COMPLETED`。它和 `rs_learning_activity.status` 是两份，`start` / `cancel` / `submit` 三处都双写；新增状态时必须三处一起改，漏一处会出现「任务说完成、活动说进行中」。
 
+12. **资料撤回作用于「最新 `PUBLISHED` 版本」，不是「最新版本」。** 编辑后最新版本往往是 `DRAFT`，若用 latest 的状态判断能否撤回，会出现「线上 v1 还在被检索、管理端却因为 v2 是草稿而拒绝撤回」的死角。`withdraw` 的 `expectedVersion` 仍传前端看到的最新版本号（用于乐观锁），但落库对象必须是 `max(version) where publication_status='PUBLISHED'`。列表/详情的 `publishedVersion` 就是当前生效版本，`null` 表示线上无内容；只显示 latest 状态会把「编辑中的草稿」误读成「资料已下线」。
+13. **中文切词必须保留单字。** 只按「长度 ≥2 切二元组」实现时，`栈`、`队` 这类单字查询会得到空 token 集，检索直接返回空——不是「没命中」，是「查询被丢弃」。单字 CJK 直接作为 token。
+
 ## 工作方式
 
 - 动手前先读相关文件，不要凭猜测改代码。
 - 报告必须附**实际执行的命令与实际输出**。不要用「已完成」「无问题」代替证据。测试结果要给 Surefire XML 的实际计数（测试类数、用例数、失败数、错误数），不能只说「全部通过」，也不能拿上一次的报告冒充本次。
 - 做不到的事直接说做不到。不要伪造输出，不要改用 `localhost` 绕过环境问题。
 - **测试不能伪造证据**：想验证「配置生效」就必须真的让 Spring 绑定（`@SpringBootTest(properties=...)` 或 `ApplicationContextRunner`），不能用 `MockEnvironment.resolvePlaceholders()` 手工算出值再 `new` 一个配置对象——那只能证明实现用了注入的配置对象，证明不了环境变量能改到它。断言集合时先断非空，`allMatch` 对空集合恒为 true。
-- 遇到以下操作先停下说明并等确认：修改 V1—V10 迁移、写入真实库 `reviewsystem`、重写 git 历史、force push。
+- 遇到以下操作先停下说明并等确认：修改 V1—V12 迁移、写入真实库 `reviewsystem`、重写 git 历史、force push。
 - 提交规范：分支名 `M<NN>`；仓库身份已配置为 `zero-0623`；**不要提交** `.codex/`、`学习资料/`、`import-report-19A.json`、`*.log`。
 - 文档随代码同步：改接口要更新 `docs/技术设计文档.md` 第 7 节接口表与对应里程碑状态行。
 

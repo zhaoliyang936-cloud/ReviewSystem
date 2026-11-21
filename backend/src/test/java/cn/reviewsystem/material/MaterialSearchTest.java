@@ -134,4 +134,19 @@ class MaterialSearchTest {
         List<MaterialChunkHit> caseInsensitive = searchPort.search(kpA, "avl");
         assertEquals(1, caseInsensitive.size());
     }
+
+    @Test
+    void singleCharacterChineseQueryStillMatches() {
+        MaterialDetail material = materialService.create(new MaterialWriteRequest(
+            String.valueOf(kpA),
+            "栈与队列",
+            "stack-queue.pdf#p1",
+            "栈是后进先出的线性表。\n\n队列是先进先出的线性表。",
+            null
+        ));
+        materialService.publish(Long.parseLong(material.materialId()), new PublishRequest(1));
+
+        assertEquals(1, searchPort.search(kpA, "栈").size(), "Single CJK character must not be dropped by tokenizer");
+        assertEquals(1, searchPort.search(kpA, "队列").size());
+    }
 }

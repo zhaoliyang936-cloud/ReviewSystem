@@ -115,7 +115,7 @@ public class MaterialSearchService implements MaterialSearchPort {
     /**
      * Tokenize query deterministically:
      * - English/digits: lowercase whole words [a-z0-9]+
-     * - Chinese: contiguous CJK runs of length >= 2 split into 2-character bigrams
+     * - Chinese: single-character run kept as is; longer CJK runs split into 2-character bigrams
      */
     public static Set<String> tokenize(String query) {
         if (query == null || query.isBlank()) {
@@ -126,7 +126,9 @@ public class MaterialSearchService implements MaterialSearchPort {
         while (matcher.find()) {
             String run = matcher.group();
             if (isCjk(run.charAt(0))) {
-                if (run.length() >= 2) {
+                if (run.length() == 1) {
+                    tokens.add(run);
+                } else {
                     for (int i = 0; i <= run.length() - 2; i++) {
                         tokens.add(run.substring(i, i + 2));
                     }
