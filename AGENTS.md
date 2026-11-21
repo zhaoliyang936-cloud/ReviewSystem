@@ -73,7 +73,7 @@ M07 第一阶段已实现：`MixSlotAllocator` 槽位分配器、M04 `mix_ratio_
 8. **Flyway 只能由应用启动执行。** 用 psql 手工跑迁移不写 `flyway_schema_history`，之后 Flyway 会拒绝启动。
 9. **`@WebMvcTest` 是切片测试，不加载数据源，Flyway 不会执行。** 要验证迁移必须用 `@SpringBootTest`。
 
-## 已知待修（M07 第二阶段一并处理）
+## 已知待修
 
 1. ~~`PracticeService` 的 `planned` 按请求题量算~~ **已修**：改为 `MixSlotAllocator.allocate(selected.size(), mix.ai())`，`M04IntegrationTest.scarceSingleKnowledgeUsesEveryQuestionOnceAndReportsRequestedCount` 断言 `planned.bank + planned.ai == 实际题数` 且 `degraded.size() == planned.ai`。
 2. ~~`ReviewTaskService` 硬编码 0.7/0.3~~ **已修**：构造注入 `PracticeMixConfig`，`version` / `ratio.bank` / `ratio.ai` 全取配置。
@@ -83,7 +83,9 @@ M07 第一阶段已实现：`MixSlotAllocator` 槽位分配器、M04 `mix_ratio_
 6. ~~任务里的主观题无法上传作答图片~~ **已在 V9 解决**：`rs_answer_asset` 新增可空 `task_item_id`、`practice_item_id` 放开 NOT NULL、加 CHECK `ck_rs_answer_asset_owner`（二者恰有其一）、`uq_rs_answer_asset_task_position`。「练习还是任务」由 `AnswerAssetService` 的 `Owner`（`PRACTICE` / `TASK`）决定，对外方法是 `upload` / `uploadForTask`、`delete` / `deleteForTask`。任务附件地址前缀 `/api/answer-assets/{id}`，练习仍是 `/api/practice-assets/{id}`。上传同样要求 activity 处于 `IN_PROGRESS`，所以任务必须先 `POST /api/review/tasks/{id}/start`。
 7. `Item.position` 是池内序号（已在 M07 落 `rs_task_item` 时按列表下标重排，M06 响应里仍是池内序号，读响应时注意）。
 8. **`grading_status` 缺 `AI_REVIEW_FAILED`**：技术设计第 191 行要求 AI 超时或失败时把题项置为 `AI_REVIEW_FAILED`，但 V6/V8 的 CHECK 只有 `NOT_STARTED` / `AUTO_GRADED` / `AI_REVIEW_PENDING`。M10 做主观题评分前必须补迁移放开该值（V9 已用于附件归属，需另起 V10）。
-9. **任务只有 start / cancel，没有草稿、提交、结果**：`rs_task_item.draft_json` / `final_answer_json` / `result_json` 三列已就位但无人写。
+9. ~~任务只有 start / cancel，没有草稿、提交、结果~~ **已解决**：`PUT /api/review/tasks/{id}/items/{itemId}/draft`（`draft_version` 乐观锁 + 仅 `IN_PROGRESS`）、`POST /api/review/tasks/{id}/submit`（幂等键 + `submit_hash`、客观题复用 `GradingService`、主观题 `AI_REVIEW_PENDING`、附件转 `SUBMITTED`、双写 `COMPLETED`、投递 `TASK_SUBMITTED` 且 `source_revision = task.source_revision + 1`）、`GET /api/review/tasks/{id}/result`（仅 `COMPLETED`）均已实现并有集成测试。
+10. **`POST /api/review/tasks` 的状态码与文档不符**：技术设计第 7 节写「固定混合组卷返回 202 准备，全部降级时 201」，实现是 `@ResponseStatus(CREATED)` 一律 201，且任务直接落 `READY`。AI 出题接入后（M10）必须区分 202 + `PREPARING`，届时改 controller 返回值而不是只改注解。
+11. **`rs_review_task.status` 没有 CHECK 约束**：V8 建表时只给了 `VARCHAR(24) DEFAULT 'READY'`，现在实际取值已含 `READY` / `IN_PROGRESS` / `CANCELLED` / `COMPLETED`。它和 `rs_learning_activity.status` 是两份，`start` / `cancel` / `submit` 三处都双写；新增状态时必须三处一起改，漏一处会出现「任务说完成、活动说进行中」。
 
 ## 工作方式
 
