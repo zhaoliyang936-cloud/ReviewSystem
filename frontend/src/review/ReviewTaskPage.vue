@@ -29,6 +29,7 @@ function ensureAnswer(i){
  return answers.value[i.id]
 }
 function initial(i){
+ // i.draft 是 Vue 响应式 Proxy，structuredClone 会抛 DataCloneError 并中断 load() 的初始化循环，必须用 JSON 深拷贝
  if(isPlainObject(i.draft))return JSON.parse(JSON.stringify(i.draft))
  return emptyAnswer(i)
 }
