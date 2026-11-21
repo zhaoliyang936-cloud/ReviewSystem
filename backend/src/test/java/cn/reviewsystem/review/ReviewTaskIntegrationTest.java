@@ -242,6 +242,12 @@ class ReviewTaskIntegrationTest {
   assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(ansA,null,null,null,null))).code());
   assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.draft(u,taskId,firstItemId,new ReviewTaskService.DraftRequest(ansA,1,"MANUAL",null,null))).code());
 
+  // detail 必须回传草稿与版本号，否则前端无法做乐观锁
+  var reloaded=tasks.detail(u,taskId).items().stream().filter(i->i.id().equals(String.valueOf(firstItemId))).findFirst().orElseThrow();
+  assertEquals(1,reloaded.draftVersion());
+  assertEquals(ansA,reloaded.draft());
+  assertTrue(reloaded.assets().isEmpty());
+
   // 8) 附件上传准备
   long choiceItemId=0,fillItemId=0,shortItemId=0;
   for(var item:created.items()){
@@ -253,11 +259,14 @@ class ReviewTaskIntegrationTest {
    }
   }
   assertTrue(choiceItemId>0&&fillItemId>0&&shortItemId>0);
+  final long cid=choiceItemId,sid=shortItemId;
   byte[] png=Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
-  var uploaded=assets.uploadForTask(u,taskId,shortItemId,new MockMultipartFile("file","s.png","image/png",png));
+  var uploaded=assets.uploadForTask(u,taskId,sid,new MockMultipartFile("file","s.png","image/png",png));
+  var afterUpload=tasks.detail(u,taskId).items().stream().filter(i->i.id().equals(String.valueOf(sid))).findFirst().orElseThrow();
+  assertEquals(1,afterUpload.assets().size());
+  assertEquals("/api/answer-assets/"+uploaded.id(),afterUpload.assets().get(0).url());
 
   // 5) 塞一个不属于本任务的 itemId -> 400；重复 itemId -> 400；重复 assetId -> 400
-  final long cid=choiceItemId,sid=shortItemId;
   assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-bad-item",new ReviewTaskService.SubmitRequest(List.of(new ReviewTaskService.FinalAnswer("999999999",ansA,List.of())),null,null,null))).code());
   assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-dup-item",new ReviewTaskService.SubmitRequest(List.of(new ReviewTaskService.FinalAnswer(String.valueOf(cid),ansA,List.of()),new ReviewTaskService.FinalAnswer(String.valueOf(cid),ansA,List.of())),null,null,null))).code());
   assertEquals("VALIDATION_FAILED",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-dup-asset",new ReviewTaskService.SubmitRequest(List.of(new ReviewTaskService.FinalAnswer(String.valueOf(sid),json.valueToTree(Map.of("text","my short")),List.of(uploaded.id(),uploaded.id()))),null,null,null))).code());
@@ -329,5 +338,28 @@ class ReviewTaskIntegrationTest {
   assertEquals("IDEMPOTENCY_CONFLICT",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-ok",new ReviewTaskService.SubmitRequest(List.of(),null,null,null))).code());
   assertEquals("STATE_CONFLICT",assertThrows(BusinessException.class,()->tasks.submit(u,taskId,"sub-other-key",submitBody)).code());
   assertEquals(json.valueToTree(res1),json.valueToTree(tasks.result(u,taskId)));
+ }
+
+ @Test void createIsBlockedWhileAssessmentUpdates(){
+  long u=user();
+  var first=tasks.create(u,"assess-1",new ReviewTaskService.CreateRequest(3));
+  long firstId=Long.parseLong(first.id());
+  tasks.cancel(u,firstId);
+  db.update("INSERT INTO rs_change_event(event_type,source_id,source_revision,state) VALUES ('TASK_SUBMITTED',?,1,'PENDING')",firstId);
+
+  // 评估未完成时拒绝生成，且必须早于活动互斥判断（此时用户已无活跃活动）
+  assertEquals(0,db.queryForObject("SELECT count(*) FROM rs_learning_activity a JOIN rs_user u ON u.id=a.user_id WHERE a.user_id=? AND a.status IN ('PREPARING','READY','IN_PROGRESS','GRADING')",Integer.class,u));
+  var blocked=assertThrows(BusinessException.class,()->tasks.create(u,"assess-2",new ReviewTaskService.CreateRequest(3)));
+  assertEquals("ASSESSMENT_UPDATING",blocked.code());
+  assertEquals(409,blocked.status().value());
+
+  // 幂等重放优先于拦截：同键同 body 仍返回原任务
+  assertEquals(first.id(),tasks.create(u,"assess-1",new ReviewTaskService.CreateRequest(3)).id());
+
+  // 评估完成后可以正常生成
+  db.update("UPDATE rs_change_event SET state='DONE' WHERE event_type='TASK_SUBMITTED' AND source_id=?",firstId);
+  var second=tasks.create(u,"assess-2",new ReviewTaskService.CreateRequest(3));
+  assertTrue(second.items().size()>0);
+  assertEquals("READY",second.status());
  }
 }

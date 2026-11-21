@@ -14,6 +14,9 @@ import PracticeResultPage from './practice/PracticeResultPage.vue'
 import PracticeHistoryPage from './practice/PracticeHistoryPage.vue'
 import MasteryOverviewPage from './mastery/MasteryOverviewPage.vue'
 import MasteryDetailPage from './mastery/MasteryDetailPage.vue'
+import RecommendationPage from './review/RecommendationPage.vue'
+import ReviewTaskPage from './review/ReviewTaskPage.vue'
+import ReviewTaskResultPage from './review/ReviewTaskResultPage.vue'
 import './practice/practice.css'
 const router = createRouter({ history: createWebHistory(), routes: [
  { path: '/', component: Home },
@@ -21,6 +24,9 @@ const router = createRouter({ history: createWebHistory(), routes: [
  { path: '/practice/history', component: PracticeHistoryPage },
  { path: '/mastery', component: MasteryOverviewPage },
  { path: '/mastery/:knowledgeId', component: MasteryDetailPage },
+ { path: '/review', component: RecommendationPage },
+ { path: '/review/tasks/:id/result', component: ReviewTaskResultPage },
+ { path: '/review/tasks/:id', component: ReviewTaskPage },
  { path: '/practice/:id/result', component: PracticeResultPage },
  { path: '/practice/:id', component: PracticePage },
  { path: '/admin', component: AdminLayout, redirect: '/admin/knowledge', children: [
