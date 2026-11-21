@@ -28,6 +28,7 @@ public final class MaterialDtos {
         String title,
         String sourceLabel,
         PublicationStatus publicationStatus,
+        Integer publishedVersion,
         Instant approvedAt,
         Instant updatedAt
     ) {}
@@ -63,6 +64,7 @@ public final class MaterialDtos {
         String sourceLabel,
         String content,
         PublicationStatus publicationStatus,
+        Integer publishedVersion,
         String approvedBy,
         Instant approvedAt,
         Instant createdAt,

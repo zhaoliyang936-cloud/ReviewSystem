@@ -81,6 +81,8 @@ public class MaterialService {
             SELECT mv.material_id,
                    mv.version AS latest_version,
                    (SELECT count(*) FROM rs_material_version mv3 WHERE mv3.material_id = mv.material_id) AS version_count,
+                   (SELECT max(mv4.version) FROM rs_material_version mv4
+                     WHERE mv4.material_id = mv.material_id AND mv4.publication_status = 'PUBLISHED') AS published_version,
                    mv.knowledge_id,
                    k.name AS knowledge_name,
                    mv.title,
@@ -99,6 +101,7 @@ public class MaterialService {
             rs.getString("title"),
             rs.getString("source_label"),
             PublicationStatus.valueOf(rs.getString("publication_status")),
+            rs.getObject("published_version", Integer.class),
             toInstant(rs.getTimestamp("approved_at")),
             toInstant(rs.getTimestamp("created_at"))
         ), queryArgs.toArray());
@@ -127,6 +130,11 @@ public class MaterialService {
 
         MaterialVersionView latest = versions.get(0);
         long latestVersionId = Long.parseLong(latest.id());
+        Integer publishedVersion = db.queryForObject("""
+            SELECT max(version) FROM rs_material_version
+            WHERE material_id = ? AND subject_id = 1 AND publication_status = 'PUBLISHED'
+            """, Integer.class, materialId);
+        String effectiveWithdrawReason = withdrawReason == null ? loadLatestWithdrawReason(materialId) : withdrawReason;
         List<MaterialChunkView> chunks = db.query("""
             SELECT id, position, text
             FROM rs_material_chunk
@@ -148,13 +156,24 @@ public class MaterialService {
             latest.sourceLabel(),
             latest.content(),
             latest.publicationStatus(),
+            publishedVersion,
             latest.approvedBy(),
             latest.approvedAt(),
             latest.createdAt(),
-            withdrawReason,
+            effectiveWithdrawReason,
             chunks,
             versions
         );
+    }
+
+    private String loadLatestWithdrawReason(long materialId) {
+        List<String> rows = db.query("""
+            SELECT withdraw_reason FROM rs_material_version
+            WHERE material_id = ? AND withdraw_reason IS NOT NULL
+            ORDER BY version DESC
+            LIMIT 1
+            """, (rs, rowNum) -> rs.getString(1), materialId);
+        return rows.isEmpty() ? null : rows.get(0);
     }
 
     @Transactional
@@ -281,23 +300,46 @@ public class MaterialService {
         if (req == null || req.expectedVersion() == null) {
             validation("expectedVersion is required");
         }
-        if (req.reason() == null || req.reason().isBlank()) {
-            validation("Withdraw reason is required");
-        }
         VersionRow latest = lockAndLoadLatest(materialId);
         if (latest.version() != req.expectedVersion()) {
             throw new BusinessException(HttpStatus.CONFLICT, "STATE_CONFLICT", "Material was changed by another request");
         }
-        if (latest.status() != PublicationStatus.PUBLISHED) {
-            throw new BusinessException(HttpStatus.CONFLICT, "STATE_CONFLICT", "Only PUBLISHED material version can be withdrawn");
+        String reason = validateWithdrawReason(req.reason());
+        VersionRow target = loadLatestPublished(materialId);
+        if (target == null) {
+            throw new BusinessException(HttpStatus.CONFLICT, "STATE_CONFLICT", "No published material version to withdraw");
         }
+        Long userId = currentUserId();
 
-        db.update(
-            "UPDATE rs_material_version SET publication_status = ? WHERE id = ?",
-            PublicationStatus.WITHDRAWN.name(), latest.id()
+        db.update("""
+            UPDATE rs_material_version
+            SET publication_status = ?, withdraw_reason = ?, withdrawn_by = ?, withdrawn_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            PublicationStatus.WITHDRAWN.name(), reason, userId, target.id()
         );
 
-        return detail(materialId, req.reason().trim());
+        return detail(materialId, reason);
+    }
+
+    private VersionRow loadLatestPublished(long materialId) {
+        List<VersionRow> rows = db.query("""
+            SELECT id, material_id, version, knowledge_id, source_label, content, publication_status
+            FROM rs_material_version
+            WHERE material_id = ? AND subject_id = 1 AND publication_status = 'PUBLISHED'
+            ORDER BY version DESC
+            LIMIT 1
+            FOR UPDATE
+            """, (rs, rowNum) -> new VersionRow(
+            rs.getLong("id"),
+            rs.getLong("material_id"),
+            rs.getInt("version"),
+            rs.getLong("knowledge_id"),
+            rs.getString("source_label"),
+            rs.getString("content"),
+            PublicationStatus.valueOf(rs.getString("publication_status"))
+        ), materialId);
+        return rows.isEmpty() ? null : rows.get(0);
     }
 
     private VersionRow lockAndLoadLatest(long materialId) {
@@ -393,6 +435,17 @@ public class MaterialService {
     private String validateContent(String content) {
         splitter.split(content);
         return content.replace("\r\n", "\n").replace('\r', '\n').trim();
+    }
+
+    private static String validateWithdrawReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            validation("Withdraw reason is required");
+        }
+        String trimmed = reason.trim();
+        if (trimmed.length() > 500) {
+            validation("Withdraw reason must not exceed 500 characters");
+        }
+        return trimmed;
     }
 
     private static void validation(String message) {

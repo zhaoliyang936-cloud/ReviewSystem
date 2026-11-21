@@ -154,7 +154,7 @@ async function withdraw() {
       body: { reason: withdrawReason.value.trim(), expectedVersion: detail.value.latestVersion }
     })
     detail.value = updated
-    notice.value = `版本 v${updated.latestVersion} 已撤回（原因：${updated.withdrawReason || withdrawReason.value.trim()}）`
+    notice.value = `线上版本已撤回（原因：${updated.withdrawReason || withdrawReason.value.trim()}）`
     withdrawReason.value = ''
   } catch (e) {
     error.value = e.message
@@ -205,6 +205,12 @@ onMounted(async () => {
           <span :class="['badge', detail.publicationStatus === 'PUBLISHED' ? 'active' : '']">
             {{ statusLabels[detail.publicationStatus] || detail.publicationStatus }}
           </span>
+          <span
+            v-if="detail.publishedVersion && detail.publishedVersion !== detail.latestVersion"
+            class="badge live"
+          >
+            线上生效 v{{ detail.publishedVersion }}
+          </span>
         </div>
 
         <label class="field">
@@ -242,11 +248,14 @@ onMounted(async () => {
           </button>
         </div>
 
-        <div v-if="detail && detail.publicationStatus === 'PUBLISHED'" class="withdraw-box">
+        <div v-if="detail && detail.publishedVersion != null" class="withdraw-box">
           <label class="field">
             撤回原因
             <input v-model="withdrawReason" placeholder="输入撤回原因后点击撤回" />
           </label>
+          <p class="muted note">
+            撤回作用于线上生效版本 v{{ detail.publishedVersion }}；若存在更新的草稿，草稿会保留但不会上线。
+          </p>
           <button type="button" class="danger" @click="withdraw">撤回资料</button>
         </div>
       </form>
@@ -321,6 +330,12 @@ onMounted(async () => {
 .status-bar {
   display: flex;
   gap: 8px;
+}
+
+.badge.live {
+  border-color: #4a4a4a;
+  color: #1a1a1a;
+  background: #f2f2f2;
 }
 .withdrawn-banner {
   margin-bottom: 14px;

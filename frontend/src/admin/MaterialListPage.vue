@@ -176,7 +176,12 @@ onMounted(async () => {
                 {{ statusLabels[item.publicationStatus] || item.publicationStatus }}
               </span>
             </td>
-            <td class="code">v{{ item.latestVersion }}（共 {{ item.versionCount }} 版）</td>
+            <td class="code">
+              v{{ item.latestVersion }}（共 {{ item.versionCount }} 版）
+              <div v-if="item.publishedVersion && item.publishedVersion !== item.latestVersion" class="live-note">
+                生效中 v{{ item.publishedVersion }}
+              </div>
+            </td>
             <td class="code">{{ item.sourceLabel || '未填写' }}</td>
             <td>{{ formatTime(item.updatedAt) }}</td>
             <td>
@@ -191,7 +196,7 @@ onMounted(async () => {
                   发布
                 </button>
                 <button
-                  v-if="item.publicationStatus === 'PUBLISHED'"
+                  v-if="item.publishedVersion != null"
                   type="button"
                   class="danger"
                   @click="withdrawItem(item)"
@@ -241,6 +246,12 @@ tr.withdrawn {
   margin-top: 4px;
   font-size: 12px;
   color: #8a3b36;
+}
+
+.live-note {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #4a4a4a;
 }
 .badge.draft-badge {
   background: #fff4e5;

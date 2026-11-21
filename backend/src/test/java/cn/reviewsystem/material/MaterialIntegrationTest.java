@@ -37,6 +37,7 @@ class MaterialIntegrationTest {
     @Autowired JdbcTemplate db;
     @Autowired ObjectMapper json;
     @Autowired IdentityService identity;
+    @Autowired MaterialSearchPort searchPort;
 
     private Cookie adminCookie;
     private Cookie studentCookie;
@@ -244,6 +245,92 @@ class MaterialIntegrationTest {
                 .content(json.writeValueAsString(Map.of("expectedVersion", 1))))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("INVALID_BINDING"));
+    }
+
+    @Test
+    void withdrawReachesPublishedVersionEvenWhenNewerDraftExists() throws Exception {
+        String body = json.writeValueAsString(Map.of(
+            "knowledgeId", String.valueOf(knowledgeId),
+            "title", "栈的基本操作",
+            "sourceLabel", "stack.pdf#p1",
+            "content", "栈是后进先出的线性表。"
+        ));
+        long materialId = json.readTree(
+            mvc.perform(post("/api/admin/materials")
+                    .cookie(adminCookie).with(csrf())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()
+        ).get("materialId").asLong();
+
+        mvc.perform(post("/api/admin/materials/" + materialId + "/publish")
+                .cookie(adminCookie).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("expectedVersion", 1))))
+            .andExpect(status().isOk());
+        assertEquals(1, searchPort.search(knowledgeId, "后进先出").size());
+
+        // Editing creates v2 DRAFT while v1 stays live
+        mvc.perform(put("/api/admin/materials/" + materialId)
+                .cookie(adminCookie).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of(
+                    "knowledgeId", String.valueOf(knowledgeId),
+                    "title", "栈的基本操作（修订）",
+                    "sourceLabel", "stack.pdf#p1",
+                    "content", "栈是后进先出的线性表，只能在栈顶操作。",
+                    "expectedVersion", 1
+                ))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.latestVersion").value(2))
+            .andExpect(jsonPath("$.publicationStatus").value("DRAFT"))
+            .andExpect(jsonPath("$.publishedVersion").value(1));
+
+        assertEquals(1, searchPort.search(knowledgeId, "后进先出").size(), "v1 must stay searchable while v2 is draft");
+
+        // Withdraw is addressed by the latest version number but must hit the live v1
+        mvc.perform(post("/api/admin/materials/" + materialId + "/withdraw")
+                .cookie(adminCookie).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("reason", "资料过时下架", "expectedVersion", 2))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.withdrawReason").value("资料过时下架"))
+            .andExpect(jsonPath("$.publishedVersion").value(org.hamcrest.Matchers.nullValue()));
+
+        assertTrue(searchPort.search(knowledgeId, "后进先出").isEmpty(), "Withdrawn material must stop matching immediately");
+
+        Map<String, Object> v1Row = db.queryForMap(
+            "SELECT publication_status, withdraw_reason, withdrawn_by FROM rs_material_version WHERE material_id=? AND version=1",
+            materialId
+        );
+        assertEquals("WITHDRAWN", v1Row.get("publication_status"));
+        assertEquals("资料过时下架", v1Row.get("withdraw_reason"));
+        assertEquals(adminUserId, ((Number) v1Row.get("withdrawn_by")).longValue());
+
+        // Reason survives a fresh read, not only the withdraw response
+        mvc.perform(get("/api/admin/materials/" + materialId).cookie(adminCookie))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.withdrawReason").value("资料过时下架"));
+
+        // Publishing a new version brings the material back
+        mvc.perform(put("/api/admin/materials/" + materialId)
+                .cookie(adminCookie).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of(
+                    "knowledgeId", String.valueOf(knowledgeId),
+                    "title", "栈的基本操作（二次修订）",
+                    "sourceLabel", "stack.pdf#p1",
+                    "content", "栈是后进先出的线性表，更新版。",
+                    "expectedVersion", 2
+                ))))
+            .andExpect(status().isOk());
+        mvc.perform(post("/api/admin/materials/" + materialId + "/publish")
+                .cookie(adminCookie).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("expectedVersion", 3))))
+            .andExpect(status().isOk());
+        assertEquals(1, searchPort.search(knowledgeId, "后进先出").size());
     }
 
     @Test
