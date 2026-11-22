@@ -3,8 +3,15 @@ import { computed,onMounted,ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api'
 
-const route=useRoute(),result=ref(null),error=ref('')
-onMounted(async()=>{try{result.value=await api(`/api/review/tasks/${route.params.id}/result`)}catch(e){error.value=e.message}})
+const route=useRoute(),result=ref(null),error=ref(''),retrying=ref({})
+async function load(){try{result.value=await api(`/api/review/tasks/${route.params.id}/result`)}catch(e){error.value=e.message}}
+async function retryReview(itemId){
+ retrying.value[itemId]=true;error.value=''
+ try{result.value=await api(`/api/review/tasks/${route.params.id}/items/${itemId}/retry-review`,{method:'POST'})}
+ catch(e){error.value=e.message}
+ finally{retrying.value[itemId]=false}
+}
+onMounted(load)
 
 const summary=computed(()=>{
  const items=result.value?.items||[]
@@ -79,7 +86,10 @@ function referenceAnswer(item){
     <strong>第 {{item.position+1}} 题</strong>
     <span class="p-pill">{{item.type}}</span>
     <span>{{statusText(item)}}</span>
-    <span class="p-muted">得分 {{score(item.result?.raw_score)}} / {{score(item.maxScore)}}</span>
+    <span v-if="item.result?.grading_mode==='LLM_SUGGESTED'&&item.result?.grading_status==='AUTO_GRADED'" class="p-muted">
+     建议分 {{score(item.result?.raw_score)}} / {{score(item.maxScore)}} · 归一化 {{score(item.result?.normalized_score)}}
+    </span>
+    <span v-else class="p-muted">得分 {{score(item.result?.raw_score)}} / {{score(item.maxScore)}}</span>
    </div>
    <h2 class="r-stem">{{item.content.stem}}</h2>
 
@@ -99,8 +109,26 @@ function referenceAnswer(item){
     <a v-for="a in item.assets" :key="a.id" :href="a.url" target="_blank"><img :src="a.url" alt="作答附件"></a>
    </div>
 
-   <p v-if="item.result?.grading_status==='AI_REVIEW_PENDING'" class="p-muted r-note">
+   <div v-if="item.result?.missing_points?.length" class="r-block">
+    <div class="r-label">缺失要点</div>
+    <ul><li v-for="(mp,idx) in item.result.missing_points" :key="idx">{{mp}}</li></ul>
+   </div>
+   <p v-if="item.result?.reason" class="p-muted r-note"><strong>AI 评语：</strong>{{item.result.reason}}</p>
+
+   <p v-if="item.result?.grading_status==='AI_REVIEW_PENDING'&&item.result?.unavailable_reason" class="p-muted r-note">
+    AI 暂不可用（{{item.result.unavailable_reason}}），已保留待评分状态
+   </p>
+   <p v-else-if="item.result?.grading_status==='AI_REVIEW_PENDING'" class="p-muted r-note">
     这道主观题已保存，等待 AI 给出建议评分；评分完成前不计入掌握度。
+   </p>
+   <p v-else-if="item.result?.grading_status==='AI_REVIEW_FAILED'" class="p-error">
+    AI 评分未完成，本次不计入掌握度
+    <button class="p-secondary" :disabled="retrying[item.itemId]" @click="retryReview(item.itemId)">
+     {{retrying[item.itemId]?'重试中…':'重试评分'}}
+    </button>
+   </p>
+   <p v-else-if="item.result?.provisional" class="p-muted r-note">
+    {{item.result.suggestion_disclaimer || 'AI 建议分不构成正式成绩'}}
    </p>
   </article>
 

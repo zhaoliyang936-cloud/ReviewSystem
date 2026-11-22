@@ -4,6 +4,7 @@ frontend/dist/
 .env
 .env.*
 !.env.example
+.idea/
 *.log
 .codex/
 学习资料/

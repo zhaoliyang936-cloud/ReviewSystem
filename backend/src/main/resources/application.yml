@@ -30,8 +30,20 @@ app:
     directory: ${ANSWER_ASSET_DIR:${user.home}/.reviewsystem/answer-assets}
   practice:
     mix:
-      version: ${PRACTICE_MIX_VERSION:v1}
+      version: ${PRACTICE_MIX_VERSION:v3}
       bank: ${PRACTICE_BANK_RATIO:0.7}
       ai: ${PRACTICE_AI_RATIO:0.3}
   ai:
     enabled: ${AI_ENABLED:false}
+    base-url: ${AI_BASE_URL:}
+    api-key: ${AI_API_KEY:}
+    model: ${AI_MODEL:}
+    timeout-ms: ${AI_TIMEOUT_MS:30000}
+    max-attempts: ${AI_MAX_ATTEMPTS:2}
+    prepare-timeout-seconds: ${AI_PREPARE_TIMEOUT_SECONDS:90}
+    mastery-timeout-ms: ${AI_MASTERY_TIMEOUT_MS:20000}
+    daily-call-limit: ${AI_DAILY_CALL_LIMIT:200}
+    duplicate-threshold: ${AI_DUPLICATE_THRESHOLD:0.85}
+    temperature: ${AI_TEMPERATURE:0.7}
+    max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:4096}
+    json-mode: ${AI_JSON_MODE:auto}

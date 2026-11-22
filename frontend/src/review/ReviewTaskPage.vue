@@ -5,8 +5,9 @@ import { api } from '../api'
 
 const route=useRoute(),router=useRouter()
 const task=ref(null),index=ref(0),answers=ref({}),message=ref(''),error=ref(''),saving=ref(false),uploading=ref(false),submitting=ref(false)
+const preparing=ref(false),prepareTimedOut=ref(false),prepareFailed=ref(false),prepareFailureReason=ref('')
 const submitKey=crypto.randomUUID()
-let timer
+let timer,pollTimer,pollStartedAt=0
 
 const item=computed(()=>task.value?.items[index.value])
 const answer=computed({get:()=>ensureAnswer(item.value)||{},set:v=>{if(item.value)answers.value[item.value.id]=isPlainObject(v)?v:emptyAnswer(item.value)}})
@@ -33,14 +34,43 @@ function initial(i){
  if(isPlainObject(i.draft))return JSON.parse(JSON.stringify(i.draft))
  return emptyAnswer(i)
 }
-async function load(){
- error.value=''
+async function initReadyTask(){
+ preparing.value=false
+ prepareTimedOut.value=false
+ if(task.value.status==='PREPARATION_FAILED'){
+  prepareFailed.value=true
+  prepareFailureReason.value=task.value.mixRatio?.preparationFailure?.reason||'AI_WORKER_STALE'
+  return
+ }
+ prepareFailed.value=false
+ for(const i of task.value.items)answers.value[i.id]=initial(i)
+ if(task.value.status==='READY')task.value=await api(`/api/review/tasks/${route.params.id}/start`,{method:'POST'})
+ else if(task.value.status==='COMPLETED')router.replace(`/review/tasks/${route.params.id}/result`)
+ else if(task.value.status==='CANCELLED')error.value='这个任务已取消，无法继续作答。'
+}
+async function pollPreparing(){
+ const POLL_MAX_MS=Math.max(120000,((task.value?.preparationTimeoutSeconds??90)*1000)+30000)
+ if(Date.now()-pollStartedAt>=POLL_MAX_MS){
+  try{
+   task.value=await api(`/api/review/tasks/${route.params.id}`)
+   if(task.value.status!=='PREPARING'){await initReadyTask();return}
+  }catch(e){error.value=e.message}
+  preparing.value=false;prepareTimedOut.value=true;return
+ }
  try{
   task.value=await api(`/api/review/tasks/${route.params.id}`)
-  for(const i of task.value.items)answers.value[i.id]=initial(i)
-  if(task.value.status==='READY')task.value=await api(`/api/review/tasks/${route.params.id}/start`,{method:'POST'})
-  else if(task.value.status==='COMPLETED')router.replace(`/review/tasks/${route.params.id}/result`)
-  else if(task.value.status==='CANCELLED')error.value='这个任务已取消，无法继续作答。'
+  if(task.value.status!=='PREPARING'){await initReadyTask();return}
+  pollTimer=setTimeout(pollPreparing,1000)
+ }catch(e){preparing.value=false;error.value=e.message}
+}
+async function load(){
+ error.value='';prepareTimedOut.value=false;prepareFailed.value=false
+ try{
+  task.value=await api(`/api/review/tasks/${route.params.id}`)
+  if(task.value.status==='PREPARING'){
+   preparing.value=true;pollStartedAt=Date.now();pollTimer=setTimeout(pollPreparing,1000);return
+  }
+  await initReadyTask()
  }catch(e){error.value=e.message}
 }
 async function save(){
@@ -97,7 +127,7 @@ async function submit(){
  }catch(e){error.value=e.message}finally{submitting.value=false}
 }
 onMounted(load)
-onBeforeUnmount(()=>clearTimeout(timer))
+onBeforeUnmount(()=>{clearTimeout(timer);clearTimeout(pollTimer)})
 </script>
 
 <template>
@@ -113,10 +143,24 @@ onBeforeUnmount(()=>clearTimeout(timer))
   <span class="p-pill">共 {{task.questionCount}} 题</span>
   <span>计划 题库 {{mix.planned?.bank??0}} + AI {{mix.planned?.ai??0}}</span>
   <span class="p-muted">实际 题库 {{mix.actual?.bank??0}} + AI {{mix.actual?.ai??0}}</span>
+  <span v-if="mix?.shortage && (task?.status === 'PREPARING' || (mix?.actual?.ai ?? 0) > 0)" class="p-muted">题库可用题不足 {{ mix.shortage.bankShortfall }} 题，已由 AI 补位</span>
+  <span v-else-if="mix?.shortage" class="p-muted">题库可用题不足 {{ mix.shortage.bankShortfall }} 题，本次共 {{ mix.shortage.actual }} 题</span>
   <span v-if="degradedCount" class="p-muted">{{degradedCount}} 个 AI 槽位已由题库题补位</span>
  </div>
 
- <template v-if="item">
+ <div v-if="preparing" class="p-card">
+  <p>正在准备题目（AI {{mix?.planned?.ai??3}} 题）…</p>
+  <button class="p-primary" disabled>开始作答</button>
+ </div>
+ <div v-else-if="prepareFailed" class="p-card">
+  <p class="p-error">题目准备失败（{{prepareFailureReason}}），请返回重新创建。</p>
+  <RouterLink class="p-secondary" to="/review">返回重新创建</RouterLink>
+ </div>
+ <div v-else-if="prepareTimedOut" class="p-card">
+  <p class="p-error">题目仍在准备中，可以稍后刷新；若长时间无变化，请返回重新创建。</p>
+  <button class="p-secondary" @click="load">刷新题目</button>
+ </div>
+ <template v-else-if="item">
   <div class="p-card">
    <div class="p-actions">
     <span class="p-pill">{{item.questionType}}</span>

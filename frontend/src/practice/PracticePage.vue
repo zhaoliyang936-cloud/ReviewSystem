@@ -1,15 +1,224 @@
 <script setup>
-import { computed,onBeforeUnmount,onMounted,ref,watch } from 'vue';import { useRoute,useRouter } from 'vue-router';import { api } from '../api'
-const route=useRoute(),router=useRouter(),practice=ref(null),index=ref(0),answers=ref({}),message=ref(''),error=ref(''),saving=ref(false),uploading=ref(false),submitKey=crypto.randomUUID(),requestedCount=Number(window.history.state.requestedCount||0);let timer
-const item=computed(()=>practice.value?.items[index.value]);const answer=computed({get:()=>answers.value[item.value?.id]||{},set:v=>{answers.value[item.value.id]=v}})
-function initial(i){if(i.draft)return structuredClone(i.draft);if(i.type==='CHOICE')return{selectedOption:''};if(i.type==='FILL')return{blanks:Array.from({length:(i.content.stem.match(/\{\{blank\}\}/g)||[]).length},()=>"")};return{text:'',code:''}}
-async function load(){try{practice.value=await api(`/api/practices/${route.params.id}`);for(const i of practice.value.items)answers.value[i.id]=initial(i);if(practice.value.status==='READY')practice.value=await api(`/api/practices/${route.params.id}/start`,{method:'POST'});if(practice.value.status==='COMPLETED')router.replace(`/practice/${route.params.id}/result`)}catch(e){error.value=e.message}}
-async function save(){clearTimeout(timer);if(!item.value||practice.value.status!=='IN_PROGRESS')return;saving.value=true;message.value='';try{const saved=await api(`/api/practices/${practice.value.id}/items/${item.value.id}/draft`,{method:'PUT',body:{answer:answers.value[item.value.id],draftVersion:item.value.draftVersion}});item.value.draftVersion=saved.draftVersion;message.value='已保存'}catch(e){error.value=`未保存：${e.message}`}finally{saving.value=false}}
-async function move(next){await save();index.value=next;error.value=''}
-watch(answers,()=>{clearTimeout(timer);message.value='';timer=setTimeout(save,5000)},{deep:true})
-async function upload(event){const file=event.target.files?.[0];if(!file)return;uploading.value=true;try{const body=new FormData();body.append('file',file);const made=await api(`/api/practices/${practice.value.id}/items/${item.value.id}/assets`,{method:'POST',body});item.value.assets.push(made)}catch(e){error.value=e.message}finally{uploading.value=false;event.target.value=''}}
-async function removeAsset(asset){if(!confirm('删除这张作答图片？'))return;try{await api(`/api/practices/${practice.value.id}/items/${item.value.id}/assets/${asset.id}`,{method:'DELETE'});item.value.assets=item.value.assets.filter(a=>a.id!==asset.id)}catch(e){error.value=e.message}}
-async function submit(){await save();const unanswered=practice.value.items.filter(i=>{const a=answers.value[i.id];return i.type==='CHOICE'?!a.selectedOption:i.type==='FILL'?a.blanks.every(v=>!v.trim()):!a.text?.trim()&&!a.code?.trim()}).length;if(!confirm(unanswered?`还有 ${unanswered} 题未作答，仍要提交吗？`:'确认提交后不能再修改，继续吗？'))return;try{await api(`/api/practices/${practice.value.id}/submit`,{method:'POST',headers:{'Idempotency-Key':submitKey},body:{answers:practice.value.items.map(i=>({itemId:i.id,answer:answers.value[i.id],assetIds:i.assets.map(a=>a.id)}))}});router.push(`/practice/${practice.value.id}/result`)}catch(e){error.value=e.message}}
-onMounted(load);onBeforeUnmount(()=>clearTimeout(timer))
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { api } from '../api'
+
+const route = useRoute(), router = useRouter()
+const practice = ref(null), index = ref(0), answers = ref({}), message = ref(''), error = ref('')
+const saving = ref(false), uploading = ref(false), preparing = ref(false), prepareTimedOut = ref(false), prepareFailed = ref(false), prepareFailureReason = ref('')
+const submitKey = crypto.randomUUID(), requestedCount = Number(window.history.state.requestedCount || 0)
+let timer, pollTimer, pollStartedAt = 0
+
+const item = computed(() => practice.value?.items?.[index.value])
+const mix = computed(() => practice.value?.mixRatio || null)
+const answer = computed({
+  get: () => answers.value[item.value?.id] || {},
+  set: v => { answers.value[item.value.id] = v }
+})
+const plannedAiCount = computed(() => practice.value?.mixRatio?.planned?.ai ?? 3)
+
+function initial(i) {
+  if (i.draft) return structuredClone(i.draft)
+  if (i.type === 'CHOICE') return { selectedOption: '' }
+  if (i.type === 'FILL') return { blanks: Array.from({ length: (i.content.stem.match(/\{\{blank\}\}/g) || []).length }, () => '') }
+  return { text: '', code: '' }
+}
+
+async function initReadyPractice() {
+  preparing.value = false
+  prepareTimedOut.value = false
+  if (practice.value.status === 'PREPARATION_FAILED') {
+    prepareFailed.value = true
+    prepareFailureReason.value = practice.value.mixRatio?.preparationFailure?.reason || 'AI_WORKER_STALE'
+    return
+  }
+  prepareFailed.value = false
+  for (const i of practice.value.items) answers.value[i.id] = initial(i)
+  if (practice.value.status === 'READY') {
+    practice.value = await api(`/api/practices/${route.params.id}/start`, { method: 'POST' })
+  }
+  if (practice.value.status === 'COMPLETED') {
+    router.replace(`/practice/${route.params.id}/result`)
+  }
+}
+
+async function pollPreparing() {
+  const POLL_MAX_MS = Math.max(120000, ((practice.value?.preparationTimeoutSeconds ?? 90) * 1000) + 30000)
+  if (Date.now() - pollStartedAt >= POLL_MAX_MS) {
+    try {
+      practice.value = await api(`/api/practices/${route.params.id}`)
+      if (practice.value.status !== 'PREPARING') {
+        await initReadyPractice()
+        return
+      }
+    } catch (e) {
+      error.value = e.message
+    }
+    preparing.value = false
+    prepareTimedOut.value = true
+    return
+  }
+  try {
+    practice.value = await api(`/api/practices/${route.params.id}`)
+    if (practice.value.status !== 'PREPARING') {
+      await initReadyPractice()
+      return
+    }
+    pollTimer = setTimeout(pollPreparing, 1000)
+  } catch (e) {
+    preparing.value = false
+    error.value = e.message
+  }
+}
+
+async function load() {
+  error.value = ''
+  prepareTimedOut.value = false
+  prepareFailed.value = false
+  try {
+    practice.value = await api(`/api/practices/${route.params.id}`)
+    if (practice.value.status === 'PREPARING') {
+      preparing.value = true
+      pollStartedAt = Date.now()
+      pollTimer = setTimeout(pollPreparing, 1000)
+      return
+    }
+    await initReadyPractice()
+  } catch (e) {
+    error.value = e.message
+  }
+}
+
+async function save() {
+  clearTimeout(timer)
+  if (!item.value || practice.value.status !== 'IN_PROGRESS') return
+  saving.value = true
+  message.value = ''
+  try {
+    const saved = await api(`/api/practices/${practice.value.id}/items/${item.value.id}/draft`, {
+      method: 'PUT',
+      body: { answer: answers.value[item.value.id], draftVersion: item.value.draftVersion }
+    })
+    item.value.draftVersion = saved.draftVersion
+    message.value = '已保存'
+  } catch (e) {
+    error.value = `未保存：${e.message}`
+  } finally {
+    saving.value = false
+  }
+}
+
+async function move(next) {
+  await save()
+  index.value = next
+  error.value = ''
+}
+
+watch(answers, () => {
+  clearTimeout(timer)
+  message.value = ''
+  timer = setTimeout(save, 5000)
+}, { deep: true })
+
+async function upload(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  uploading.value = true
+  try {
+    const body = new FormData()
+    body.append('file', file)
+    const made = await api(`/api/practices/${practice.value.id}/items/${item.value.id}/assets`, { method: 'POST', body })
+    item.value.assets.push(made)
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    uploading.value = false
+    event.target.value = ''
+  }
+}
+
+async function removeAsset(asset) {
+  if (!confirm('删除这张作答图片？')) return
+  try {
+    await api(`/api/practices/${practice.value.id}/items/${item.value.id}/assets/${asset.id}`, { method: 'DELETE' })
+    item.value.assets = item.value.assets.filter(a => a.id !== asset.id)
+  } catch (e) {
+    error.value = e.message
+  }
+}
+
+async function submit() {
+  await save()
+  const unanswered = practice.value.items.filter(i => {
+    const a = answers.value[i.id]
+    return i.type === 'CHOICE' ? !a.selectedOption : i.type === 'FILL' ? a.blanks.every(v => !v.trim()) : !a.text?.trim() && !a.code?.trim()
+  }).length
+  if (!confirm(unanswered ? `还有 ${unanswered} 题未作答，仍要提交吗？` : '确认提交后不能再修改，继续吗？')) return
+  try {
+    await api(`/api/practices/${practice.value.id}/submit`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': submitKey },
+      body: { answers: practice.value.items.map(i => ({ itemId: i.id, answer: answers.value[i.id], assetIds: i.assets.map(a => a.id) })) }
+    })
+    router.push(`/practice/${practice.value.id}/result`)
+  } catch (e) {
+    error.value = e.message
+  }
+}
+
+onMounted(load)
+onBeforeUnmount(() => {
+  clearTimeout(timer)
+  clearTimeout(pollTimer)
+})
 </script>
-<template><div class="practice-shell"><header class="practice-top"><div><span class="practice-kicker">普通练习</span><h1 class="practice-title">第 {{index+1}} / {{practice?.items.length||0}} 题</h1></div><RouterLink to="/">返回首页</RouterLink></header><p v-if="practice&&requestedCount>practice.questionCount" class="p-muted">该知识点可用题目不足，本次共 {{practice.questionCount}} 题</p><p v-if="error" class="p-error">{{error}}</p><template v-if="item"><div class="p-card"><div class="p-actions"><span class="p-pill">{{item.type}}</span><span>{{item.maxScore}} 分</span><span class="p-muted">{{saving?'保存中…':message}}</span></div><h2>{{item.content.stem}}</h2><div v-if="item.questionAssets?.length" class="p-assets"><a v-for="a in item.questionAssets" :key="a.id" :href="a.url" target="_blank"><img :src="a.url" alt="题目图片"></a></div><div v-if="item.type==='CHOICE'" class="p-options"><label v-for="o in item.content.options" :key="o.key" class="p-option"><input v-model="answer.selectedOption" type="radio" :value="o.key">{{o.key}}. {{o.text}}</label></div><div v-else-if="item.type==='FILL'"><label v-for="(_,i) in answer.blanks" :key="i" class="p-field">第 {{i+1}} 空<input v-model="answer.blanks[i]"></label></div><template v-else><label class="p-field">文字作答<textarea v-model="answer.text" placeholder="写下思路与说明"></textarea></label><label class="p-field">代码（可选）<textarea v-model="answer.code" class="p-code" placeholder="输入伪代码或程序代码"></textarea></label><div class="p-assets"><span v-for="a in item.assets" :key="a.id"><img :src="a.url" alt="作答附件"><button class="p-secondary" @click="removeAsset(a)">删除</button></span></div><label class="p-field">作答图片（最多 3 张）<input type="file" accept="image/png,image/jpeg" :disabled="uploading||item.assets.length>=3" @change="upload"></label></template></div><div class="p-card"><div class="p-progress"><button v-for="(_,i) in practice.items" :key="i" :class="{active:i===index}" @click="move(i)">{{i+1}}</button></div><div class="p-actions" style="margin-top:18px"><button class="p-secondary" :disabled="index===0" @click="move(index-1)">上一题</button><button class="p-secondary" :disabled="index===practice.items.length-1" @click="move(index+1)">下一题</button><button class="p-primary" @click="submit">提交练习</button></div></div></template></div></template>
+
+<template>
+  <div class="practice-shell">
+    <header class="practice-top">
+      <div><span class="practice-kicker">普通练习</span><h1 class="practice-title">第 {{index+1}} / {{practice?.items?.length||0}} 题</h1></div>
+      <RouterLink to="/">返回首页</RouterLink>
+    </header>
+    <p v-if="!mix && practice && requestedCount > practice.questionCount" class="p-muted">该知识点可用题目不足，本次共 {{practice.questionCount}} 题</p>
+    <p v-if="mix?.shortage" class="p-muted">
+      <span v-if="practice?.status === 'PREPARING' || (mix?.actual?.ai ?? 0) > 0">题库可用题不足 {{ mix.shortage.bankShortfall }} 题，已由 AI 补位</span>
+      <span v-else>题库可用题不足 {{ mix.shortage.bankShortfall }} 题，本次共 {{ mix.shortage.actual }} 题</span>
+    </p>
+    <p v-if="error" class="p-error">{{error}}</p>
+    <div v-if="preparing" class="p-card">
+      <p>正在准备题目（AI {{plannedAiCount}} 题）…</p>
+      <button class="p-primary" disabled>开始作答</button>
+    </div>
+    <div v-else-if="prepareFailed" class="p-card">
+      <p class="p-error">题目准备失败（{{prepareFailureReason}}），请返回重新创建。</p>
+      <RouterLink class="p-secondary" to="/practice/new">返回重新创建</RouterLink>
+    </div>
+    <div v-else-if="prepareTimedOut" class="p-card">
+      <p class="p-error">题目仍在准备中，可以稍后刷新；若长时间无变化，请返回重新创建。</p>
+      <button class="p-secondary" @click="load">刷新题目</button>
+    </div>
+    <template v-else-if="item">
+      <div class="p-card">
+        <div class="p-actions"><span class="p-pill">{{item.type}}</span><span>{{item.maxScore}} 分</span><span class="p-muted">{{saving?'保存中…':message}}</span></div>
+        <h2>{{item.content.stem}}</h2>
+        <div v-if="item.questionAssets?.length" class="p-assets"><a v-for="a in item.questionAssets" :key="a.id" :href="a.url" target="_blank"><img :src="a.url" alt="题目图片"></a></div>
+        <div v-if="item.type==='CHOICE'" class="p-options"><label v-for="o in item.content.options" :key="o.key" class="p-option"><input v-model="answer.selectedOption" type="radio" :value="o.key">{{o.key}}. {{o.text}}</label></div>
+        <div v-else-if="item.type==='FILL'"><label v-for="(_,i) in answer.blanks" :key="i" class="p-field">第 {{i+1}} 空<input v-model="answer.blanks[i]"></label></div>
+        <template v-else>
+          <label class="p-field">文字作答<textarea v-model="answer.text" placeholder="写下思路与说明"></textarea></label>
+          <label class="p-field">代码（可选）<textarea v-model="answer.code" class="p-code" placeholder="输入伪代码或程序代码"></textarea></label>
+          <div class="p-assets"><span v-for="a in item.assets" :key="a.id"><img :src="a.url" alt="作答附件"><button class="p-secondary" @click="removeAsset(a)">删除</button></span></div>
+          <label class="p-field">作答图片（最多 3 张）<input type="file" accept="image/png,image/jpeg" :disabled="uploading||item.assets.length>=3" @change="upload"></label>
+        </template>
+      </div>
+      <div class="p-card">
+        <div class="p-progress"><button v-for="(_,i) in practice.items" :key="i" :class="{active:i===index}" @click="move(i)">{{i+1}}</button></div>
+        <div class="p-actions" style="margin-top:18px">
+          <button class="p-secondary" :disabled="index===0" @click="move(index-1)">上一题</button>
+          <button class="p-secondary" :disabled="index===practice.items.length-1" @click="move(index+1)">下一题</button>
+          <button class="p-primary" @click="submit">提交练习</button>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>

@@ -84,11 +84,11 @@ class ReviewTaskIntegrationTest {
   var view=tasks.create(u,"short",new ReviewTaskService.CreateRequest(20));
   var mix=view.mixRatio();
   if(view.questionCount()<20){
-   assertEquals(20,mix.path("shortfall").path("requested").asInt());
-   assertEquals(view.questionCount(),mix.path("shortfall").path("actual").asInt());
-   assertEquals("INSUFFICIENT_RECOMMENDATIONS",mix.path("shortfall").path("reason").asText());
+   assertEquals(20,mix.path("shortage").path("requested").asInt());
+   assertEquals(view.questionCount(),mix.path("shortage").path("actual").asInt());
+   assertEquals("INSUFFICIENT_RECOMMENDATIONS",mix.path("shortage").path("reason").asText());
   }else{
-   assertTrue(mix.path("shortfall").isMissingNode());
+   assertTrue(mix.path("shortage").isMissingNode());
   }
   assertEquals(view.items().size(),view.questionCount());
   assertEquals(view.questionCount(),db.queryForObject("SELECT count(*) FROM rs_task_item WHERE task_id=?",Integer.class,Long.parseLong(view.id())));
