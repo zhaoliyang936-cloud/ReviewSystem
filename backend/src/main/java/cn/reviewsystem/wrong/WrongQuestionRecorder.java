@@ -53,52 +53,39 @@ public class WrongQuestionRecorder {
             throw new IllegalArgumentException("Invalid task attempt owner");
         }
 
-        var existing = db.query(
-                "SELECT id FROM rs_wrong_question WHERE user_id = ? AND question_id = ? FOR UPDATE",
-                (r, n) -> r.getLong(1),
-                userId, questionId
-        );
-
         if (!passed) {
-            long wqId;
-            if (existing.isEmpty()) {
-                String origin = Objects.requireNonNull(db.queryForObject(
-                        "SELECT origin FROM rs_question WHERE id = ?",
-                        String.class,
-                        questionId
-                ));
-                wqId = Objects.requireNonNull(db.queryForObject(
-                        """
-                        INSERT INTO rs_wrong_question(
-                            user_id, question_id, question_version_id, knowledge_id,
-                            source_type, status, wrong_count, first_wrong_at, last_wrong_at
-                        ) VALUES (?, ?, ?, ?, ?, 'PENDING', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                        RETURNING id
-                        """,
-                        Long.class,
-                        userId, questionId, versionId, knowledgeId, origin
-                ));
-            } else {
-                wqId = existing.getFirst();
-                db.update(
-                        """
-                        UPDATE rs_wrong_question
-                        SET wrong_count = wrong_count + 1,
-                            last_wrong_at = CURRENT_TIMESTAMP,
-                            question_version_id = ?,
-                            knowledge_id = ?,
-                            status = 'PENDING',
-                            mastered_at = NULL
-                        WHERE id = ?
-                        """,
-                        versionId, knowledgeId, wqId
-                );
-            }
+            String origin = Objects.requireNonNull(db.queryForObject(
+                    "SELECT origin FROM rs_question WHERE id = ?",
+                    String.class,
+                    questionId
+            ));
+            long wqId = Objects.requireNonNull(db.queryForObject(
+                    """
+                    INSERT INTO rs_wrong_question(
+                        user_id, question_id, question_version_id, knowledge_id,
+                        source_type, status, wrong_count, first_wrong_at, last_wrong_at
+                    ) VALUES (?, ?, ?, ?, ?, 'PENDING', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT (user_id, question_id) DO UPDATE SET
+                        wrong_count = rs_wrong_question.wrong_count + 1,
+                        last_wrong_at = CURRENT_TIMESTAMP,
+                        question_version_id = EXCLUDED.question_version_id,
+                        status = 'PENDING',
+                        mastered_at = NULL
+                    RETURNING id
+                    """,
+                    Long.class,
+                    userId, questionId, versionId, knowledgeId, origin
+            ));
             long attemptId = insertAttempt(wqId, practiceId, itemId, taskItemId, attemptType, answer, grade, false);
             db.update("UPDATE rs_wrong_question SET latest_attempt_id = ? WHERE id = ?", attemptId, wqId);
             return;
         }
 
+        var existing = db.query(
+                "SELECT id FROM rs_wrong_question WHERE user_id = ? AND question_id = ? FOR UPDATE",
+                (r, n) -> r.getLong(1),
+                userId, questionId
+        );
         if (existing.isEmpty()) {
             return;
         }

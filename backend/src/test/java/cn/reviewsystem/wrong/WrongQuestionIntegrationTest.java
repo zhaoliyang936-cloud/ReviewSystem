@@ -83,6 +83,9 @@ class WrongQuestionIntegrationTest {
         assertEquals(1, ((Number) wq.get("wrong_count")).intValue());
         long wqId = ((Number) wq.get("id")).longValue();
 
+        OffsetDateTime firstWrongAt = db.queryForObject("SELECT first_wrong_at FROM rs_wrong_question WHERE id = ?",
+                OffsetDateTime.class, wqId);
+
         // Backdate last_wrong_at slightly so second wrong clearly advances it
         db.update("UPDATE rs_wrong_question SET last_wrong_at = last_wrong_at - INTERVAL '5 minutes' WHERE id = ?", wqId);
         OffsetDateTime prevLastWrong = db.queryForObject("SELECT last_wrong_at FROM rs_wrong_question WHERE id = ?",
@@ -99,8 +102,10 @@ class WrongQuestionIntegrationTest {
 
         assertEquals(1L, db.queryForObject("SELECT count(*) FROM rs_wrong_question WHERE user_id = ? AND question_id = ?",
                 Long.class, userId, qId));
-        var wqAfter = db.queryForMap("SELECT wrong_count, last_wrong_at FROM rs_wrong_question WHERE id = ?", wqId);
+        var wqAfter = db.queryForMap("SELECT wrong_count, last_wrong_at, first_wrong_at FROM rs_wrong_question WHERE id = ?", wqId);
         assertEquals(2, ((Number) wqAfter.get("wrong_count")).intValue());
+        assertEquals(firstWrongAt, db.queryForObject("SELECT first_wrong_at FROM rs_wrong_question WHERE id = ?",
+                OffsetDateTime.class, wqId));
         OffsetDateTime newLastWrong = db.queryForObject("SELECT last_wrong_at FROM rs_wrong_question WHERE id = ?",
                 OffsetDateTime.class, wqId);
         assertTrue(newLastWrong.isAfter(prevLastWrong));
@@ -368,6 +373,53 @@ class WrongQuestionIntegrationTest {
         mvc.perform(post("/api/wrong-questions/" + wqId + "/variant")
                         .cookie(userCookie).with(csrf()))
                 .andExpect(status().isNotImplemented());
+    }
+
+    @Test
+    void versionUpgradeUpdatesWrongQuestionVersionAndRedoUsesCurrentVersion() throws Exception {
+        long qId = createChoiceQuestion(kpId, "q-ver", "MANUAL", "A");
+        long v1Id = db.queryForObject("SELECT current_version_id FROM rs_question WHERE id = ?", Long.class, qId);
+
+        // 1. Fail on v1
+        long wqId = failQuestionInPractice(qId, "fail-v1");
+        assertEquals(v1Id, db.queryForObject("SELECT question_version_id FROM rs_wrong_question WHERE id = ?", Long.class, wqId));
+        long firstAttemptId = db.queryForObject("SELECT latest_attempt_id FROM rs_wrong_question WHERE id = ?", Long.class, wqId);
+
+        // 2. Upgrade question to v2
+        String contentV2 = json.writeValueAsString(Map.of(
+                "stem", "Stem for q-ver v2",
+                "options", List.of(
+                        Map.of("key", "A", "text", "Opt A v2"),
+                        Map.of("key", "B", "text", "Opt B v2"),
+                        Map.of("key", "C", "text", "Opt C v2"),
+                        Map.of("key", "D", "text", "Opt D v2")
+                ),
+                "explanation", "Exp v2"
+        ));
+        String answerV2 = json.writeValueAsString(Map.of("correctOption", "B"));
+        long v2Id = db.queryForObject(
+                "INSERT INTO rs_question_version(question_id, version, subject_id, knowledge_point_id, type, content_json, answer_json, max_score) VALUES (?, 2, 1, ?, 'CHOICE', CAST(? AS jsonb), CAST(? AS jsonb), 2) RETURNING id",
+                Long.class, qId, kpId, contentV2, answerV2
+        );
+        db.update("UPDATE rs_question SET current_version_id = ? WHERE id = ?", v2Id, qId);
+
+        // Verify redo uses current_version_id (v2) even while wrong_question still points to v1
+        PracticeDtos.PracticeView redoBeforeFailV2 = practices.createForQuestion(userId, wqId, prefix + "-redo-v2-check");
+        assertEquals(String.valueOf(v2Id), redoBeforeFailV2.items().getFirst().questionVersionId());
+        practices.cancel(userId, Long.parseLong(redoBeforeFailV2.id()), null);
+
+        // 3. Fail on v2 in a new practice
+        failQuestionInPractice(qId, "fail-v2");
+
+        assertEquals(1L, db.queryForObject("SELECT count(*) FROM rs_wrong_question WHERE user_id = ? AND question_id = ?",
+                Long.class, userId, qId));
+        var wqAfter = db.queryForMap("SELECT wrong_count, question_version_id, latest_attempt_id FROM rs_wrong_question WHERE id = ?", wqId);
+        assertEquals(2, ((Number) wqAfter.get("wrong_count")).intValue());
+        assertEquals(v2Id, ((Number) wqAfter.get("question_version_id")).longValue());
+        long secondAttemptId = ((Number) wqAfter.get("latest_attempt_id")).longValue();
+        assertNotEquals(firstAttemptId, secondAttemptId);
+        long maxAttemptId = db.queryForObject("SELECT max(id) FROM rs_wrong_attempt WHERE wrong_question_id = ?", Long.class, wqId);
+        assertEquals(maxAttemptId, secondAttemptId);
     }
 
     private long failQuestionInPractice(long qId, String suffix) {
