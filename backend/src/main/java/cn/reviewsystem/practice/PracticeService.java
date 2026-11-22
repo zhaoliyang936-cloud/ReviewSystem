@@ -2,6 +2,7 @@ package cn.reviewsystem.practice;
 
 import cn.reviewsystem.api.BusinessException;
 import cn.reviewsystem.question.*;
+import cn.reviewsystem.wrong.WrongQuestionRecorder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.*;
@@ -13,6 +14,7 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -21,8 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PracticeService {
  private static final Logger log=LoggerFactory.getLogger(PracticeService.class);
- private final JdbcTemplate db;private final ObjectMapper json;private final QuestionValidator validator;private final GradingService grading;private final PracticeMixConfig mix;private final AiQuestionPort ai;
- public PracticeService(JdbcTemplate db,ObjectMapper json,QuestionValidator validator,GradingService grading,PracticeMixConfig mix,AiQuestionPort ai){this.db=db;this.json=json;this.validator=validator;this.grading=grading;this.mix=mix;this.ai=ai;}
+ private final JdbcTemplate db;private final ObjectMapper json;private final QuestionValidator validator;private final GradingService grading;private final PracticeMixConfig mix;private final AiQuestionPort ai;private final WrongQuestionRecorder wrongQuestions;
+ public PracticeService(JdbcTemplate db,ObjectMapper json,QuestionValidator validator,GradingService grading,PracticeMixConfig mix,AiQuestionPort ai){this(db,json,validator,grading,mix,ai,new WrongQuestionRecorder(db,json));}
+ @Autowired public PracticeService(JdbcTemplate db,ObjectMapper json,QuestionValidator validator,GradingService grading,PracticeMixConfig mix,AiQuestionPort ai,WrongQuestionRecorder wrongQuestions){this.db=db;this.json=json;this.validator=validator;this.grading=grading;this.mix=mix;this.ai=ai;this.wrongQuestions=wrongQuestions;}
 
  @Transactional public PracticeDtos.PracticeView create(long userId,String key,PracticeDtos.CreateRequest request){
   requireKey(key);rejectClientScope(request==null?null:request.userId(),request==null?null:request.subjectId(),request==null?null:request.sourceMode());if(request==null||request.questionCount()==null||request.questionCount()<1||request.questionCount()>20)validation("questionCount must be between 1 and 20");if(request.knowledgeIds()==null||request.knowledgeIds().isEmpty())validation("knowledgeIds must not be empty");db.query("SELECT pg_advisory_xact_lock(?)",r->{},userId);
@@ -38,6 +41,32 @@ public class PracticeService {
   return detail(userId,Objects.requireNonNull(practiceId),null,request.questionCount());
  }
 
+ @Transactional public PracticeDtos.PracticeView createForQuestion(long userId,long wrongQuestionId,String idempotencyKey){
+  requireKey(idempotencyKey);
+  db.query("SELECT pg_advisory_xact_lock(?)",r->{},userId);
+  var wqRows=db.query("SELECT question_id FROM rs_wrong_question WHERE id=? AND user_id=?",(r,n)->r.getLong(1),wrongQuestionId,userId);
+  if(wqRows.isEmpty())throw new BusinessException(HttpStatus.NOT_FOUND,"NOT_FOUND","Wrong question not found");
+  long questionId=wqRows.getFirst();
+  var prior=db.query("SELECT id,attempt_type,redo_wrong_question_id FROM rs_practice WHERE user_id=? AND request_key=?",(r,n)->new Object[]{r.getLong(1),r.getString(2),r.getObject(3,Long.class)},userId,idempotencyKey);
+  if(!prior.isEmpty()){
+   Object[] p=prior.getFirst();
+   if("ORIGINAL_REDO".equals(p[1])&&wrongQuestionId==((Long)p[2]))return detail(userId,(Long)p[0],null,1);
+   throw new BusinessException(HttpStatus.CONFLICT,"IDEMPOTENCY_CONFLICT","The idempotency key was already used with a different request");
+  }
+  var qRows=db.query("SELECT q.status,q.current_version_id,v.knowledge_point_id,v.type,v.max_score FROM rs_question q JOIN rs_question_version v ON v.id=q.current_version_id WHERE q.id=?",(r,n)->new Object[]{r.getString(1),r.getLong(2),r.getLong(3),r.getString(4),r.getDouble(5)},questionId);
+  if(qRows.isEmpty())throw new BusinessException(HttpStatus.NOT_FOUND,"NOT_FOUND","Question not found");
+  Object[] q=qRows.getFirst();
+  if(!"ACTIVE".equals(q[0]))throw new BusinessException(HttpStatus.CONFLICT,"QUESTION_SUSPENDED","Question is suspended and cannot be redone");
+  long versionId=(Long)q[1],knowledgeId=(Long)q[2];String type=(String)q[3];double maxScore=(Double)q[4];
+  var activityIds=db.query("INSERT INTO rs_learning_activity(user_id,subject_id,kind,status) VALUES (?,1,'PRACTICE','READY') ON CONFLICT (user_id,subject_id) WHERE status IN ('PREPARING','READY','IN_PROGRESS','GRADING') DO NOTHING RETURNING id",(r,n)->r.getLong(1),userId);
+  if(activityIds.isEmpty())throwActive(userId);
+  long activityId=activityIds.getFirst();
+  ObjectNode ratio=json.createObjectNode();ratio.put("version",mix.version());ObjectNode configured=ratio.putObject("ratio");configured.put("bank",mix.bank());configured.put("ai",mix.ai());ObjectNode planned=ratio.putObject("planned");planned.put("bank",1);planned.put("ai",0);ObjectNode actual=ratio.putObject("actual");actual.put("bank",1);actual.put("ai",0);ratio.putArray("degraded");
+  Long practiceId=db.queryForObject("INSERT INTO rs_practice(activity_id,user_id,subject_id,question_count,mix_ratio_json,request_key,attempt_type,redo_wrong_question_id) VALUES (?,?,1,1,CAST(? AS jsonb),?,'ORIGINAL_REDO',?) RETURNING id",Long.class,activityId,userId,write(ratio),idempotencyKey,wrongQuestionId);
+  db.update("INSERT INTO rs_practice_item(practice_id,question_id,question_version_id,knowledge_id,question_type,max_score,position) VALUES (?,?,?,?,?,?,0)",practiceId,questionId,versionId,knowledgeId,type,maxScore);
+  return detail(userId,Objects.requireNonNull(practiceId),null,1);
+ }
+
  public PracticeDtos.PracticeView detail(long userId,long practiceId,String sourceMode){return detail(userId,practiceId,sourceMode,null);}
  private PracticeDtos.PracticeView detail(long userId,long practiceId,String sourceMode,Integer requestedCount){rejectClientScope(null,null,sourceMode);PracticeRow practice=practice(userId,practiceId,false);var items=db.query("SELECT pi.id,pi.position,pi.question_id,pi.question_version_id,pi.knowledge_id,pi.question_type,pi.max_score,pi.draft_json::text,pi.draft_version,v.content_json::text FROM rs_practice_item pi JOIN rs_question_version v ON v.id=pi.question_version_id WHERE pi.practice_id=? ORDER BY pi.position",(r,n)->itemView(userId,r),practiceId);return new PracticeDtos.PracticeView(String.valueOf(practice.id()),String.valueOf(practice.activityId()),practice.status(),practice.questionCount(),requestedCount==null?practice.questionCount():requestedCount,read(practice.mixRatio()),items);}
 
@@ -48,7 +77,10 @@ public class PracticeService {
 
  @Transactional public PracticeDtos.ResultView submit(long userId,long practiceId,String key,PracticeDtos.SubmitRequest request){requireKey(key);rejectClientScope(request==null?null:request.userId(),request==null?null:request.subjectId(),request==null?null:request.sourceMode());if(request==null)validation("Request body is required");String hash=hash(request);PracticeRow row=practice(userId,practiceId,true);if(row.submittedAt()!=null){if(key.equals(row.submitKey())&&hash.equals(row.submitHash()))return result(userId,practiceId,null);if(key.equals(row.submitKey()))throw new BusinessException(HttpStatus.CONFLICT,"IDEMPOTENCY_CONFLICT","The idempotency key was already used with a different body");conflict("Practice has already been submitted");}if(!row.status().equals("IN_PROGRESS"))conflict("Practice must be in progress before submission");
   Map<Long,PracticeDtos.FinalAnswer> answers=new HashMap<>();if(request.answers()!=null)for(var answer:request.answers()){long itemId=parseId(answer.itemId());if(answers.put(itemId,answer)!=null)validation("Duplicate practice item answer");if(count("SELECT count(*) FROM rs_practice_item WHERE id=? AND practice_id=?",itemId,practiceId)==0)validation("Answer item does not belong to the practice");}
-  var items=db.query("SELECT pi.id,pi.question_type,pi.max_score,v.answer_json::text FROM rs_practice_item pi JOIN rs_question_version v ON v.id=pi.question_version_id WHERE pi.practice_id=? ORDER BY pi.position",(r,n)->new GradeItem(r.getLong(1),r.getString(2),r.getDouble(3),r.getString(4)),practiceId);for(GradeItem item:items){var submitted=answers.get(item.id());JsonNode answer=submitted==null||submitted.answer()==null?NullNode.getInstance():submitted.answer();List<Long> submittedAssets=validateSubmittedAssets(userId,item.id(),submitted==null?List.of():submitted.assetIds());var grade=grading.grade(item.type(),item.maxScore(),answer,read(item.correctAnswer()));db.update("UPDATE rs_practice_item SET final_answer_json=CAST(? AS jsonb),result_json=CAST(? AS jsonb),grading_status=? WHERE id=?",write(answer),write(grade.result()),grade.status(),item.id());for(long assetId:submittedAssets)db.update("UPDATE rs_answer_asset SET state='SUBMITTED' WHERE id=?",assetId);}
+  String attemptType="ORIGINAL_REDO".equals(row.attemptType())?"ORIGINAL_REDO":"ORDINARY";
+  Long linkedWrongQuestionId="ORIGINAL_REDO".equals(attemptType)?row.redoWrongQuestionId():null;
+  var items=db.query("SELECT pi.id,pi.question_id,pi.question_version_id,v.knowledge_point_id,pi.question_type,pi.max_score,v.answer_json::text FROM rs_practice_item pi JOIN rs_question_version v ON v.id=pi.question_version_id WHERE pi.practice_id=? ORDER BY pi.position",(r,n)->new GradeItem(r.getLong(1),r.getLong(2),r.getLong(3),r.getLong(4),r.getString(5),r.getDouble(6),r.getString(7)),practiceId);
+  for(GradeItem item:items){var submitted=answers.get(item.id());JsonNode answer=submitted==null||submitted.answer()==null?NullNode.getInstance():submitted.answer();List<Long> submittedAssets=validateSubmittedAssets(userId,item.id(),submitted==null?List.of():submitted.assetIds());var grade=grading.grade(item.type(),item.maxScore(),answer,read(item.correctAnswer()));db.update("UPDATE rs_practice_item SET final_answer_json=CAST(? AS jsonb),result_json=CAST(? AS jsonb),grading_status=? WHERE id=?",write(answer),write(grade.result()),grade.status(),item.id());for(long assetId:submittedAssets)db.update("UPDATE rs_answer_asset SET state='SUBMITTED' WHERE id=?",assetId);JsonNode passedNode=grade.result().get("passed");Boolean passed=passedNode!=null&&passedNode.isBoolean()?passedNode.asBoolean():null;wrongQuestions.record(userId,WrongQuestionRecorder.Source.PRACTICE,practiceId,item.id(),null,item.questionId(),item.versionId(),item.knowledgeId(),item.type(),passed,answer,grade.result(),attemptType,linkedWrongQuestionId);}
   db.update("UPDATE rs_practice SET submit_key=?,submit_hash=?,submitted_at=CURRENT_TIMESTAMP WHERE id=?",key,hash,practiceId);db.update("UPDATE rs_learning_activity SET status='COMPLETED',updated_at=CURRENT_TIMESTAMP WHERE id=?",row.activityId());db.update("INSERT INTO rs_student_course_guard(user_id,subject_id) VALUES (?,1) ON CONFLICT DO NOTHING",userId);db.update("UPDATE rs_student_course_guard SET learning_revision=learning_revision+1 WHERE user_id=? AND subject_id=1",userId);db.update("INSERT INTO rs_change_event(event_type,source_id,source_revision,state) VALUES ('PRACTICE_SUBMITTED',?,1,'PENDING')",practiceId);return result(userId,practiceId,null);
  }
 
@@ -56,7 +88,7 @@ public class PracticeService {
 
  public PageResult<PracticeDtos.HistoryItem> history(long userId,int page,int size,String sourceMode){rejectClientScope(null,null,sourceMode);if(page<0)validation("page must not be negative");if(size<1)validation("size must be positive");int actual=Math.min(size,100);Long total=db.queryForObject("SELECT count(*) FROM rs_practice WHERE user_id=? AND submitted_at IS NOT NULL",Long.class,userId);var items=db.query("SELECT p.id,p.activity_id,a.status,p.question_count,p.mix_ratio_json::text,p.created_at,p.submitted_at FROM rs_practice p JOIN rs_learning_activity a ON a.id=p.activity_id WHERE p.user_id=? AND p.submitted_at IS NOT NULL ORDER BY p.submitted_at DESC,p.id DESC LIMIT ? OFFSET ?",(r,n)->new PracticeDtos.HistoryItem(String.valueOf(r.getLong(1)),String.valueOf(r.getLong(2)),r.getString(3),r.getInt(4),read(r.getString(5)),r.getObject(6,OffsetDateTime.class),r.getObject(7,OffsetDateTime.class)),userId,actual,page*actual);return new PageResult<>(items,page,actual,total==null?0:total);}
 
- private PracticeRow practice(long userId,long id,boolean lock){var rows=db.query("SELECT p.id,p.activity_id,a.status,p.question_count,p.mix_ratio_json::text,p.submit_key,p.submit_hash,p.submitted_at FROM rs_practice p JOIN rs_learning_activity a ON a.id=p.activity_id WHERE p.id=? AND p.user_id=?"+(lock?" FOR UPDATE":""),(r,n)->new PracticeRow(r.getLong(1),r.getLong(2),r.getString(3),r.getInt(4),r.getString(5),r.getString(6),r.getString(7),r.getObject(8,OffsetDateTime.class)),id,userId);if(rows.isEmpty())notFound();return rows.get(0);}
+ private PracticeRow practice(long userId,long id,boolean lock){var rows=db.query("SELECT p.id,p.activity_id,a.status,p.question_count,p.mix_ratio_json::text,p.submit_key,p.submit_hash,p.submitted_at,p.attempt_type,p.redo_wrong_question_id FROM rs_practice p JOIN rs_learning_activity a ON a.id=p.activity_id WHERE p.id=? AND p.user_id=?"+(lock?" FOR UPDATE":""),(r,n)->new PracticeRow(r.getLong(1),r.getLong(2),r.getString(3),r.getInt(4),r.getString(5),r.getString(6),r.getString(7),r.getObject(8,OffsetDateTime.class),r.getString(9),r.getObject(10,Long.class)),id,userId);if(rows.isEmpty())notFound();return rows.get(0);}
  private PracticeDtos.ItemView itemView(long userId,ResultSet r)throws SQLException {long itemId=r.getLong(1),versionId=r.getLong(4);return new PracticeDtos.ItemView(String.valueOf(itemId),r.getInt(2),String.valueOf(r.getLong(3)),String.valueOf(versionId),String.valueOf(r.getLong(5)),r.getString(6),r.getDouble(7),publicContent(read(r.getString(10))),questionAssets(versionId),readNullable(r.getString(8)),r.getInt(9),assets(userId,itemId));}
  private List<PracticeDtos.QuestionAssetView> questionAssets(long versionId){return db.query("SELECT id,position,mime FROM rs_question_asset WHERE question_version_id=? ORDER BY position",(r,n)->new PracticeDtos.QuestionAssetView(String.valueOf(r.getLong(1)),r.getInt(2),r.getString(3),"/api/question-assets/"+r.getLong(1)),versionId);}
  private List<PracticeDtos.AssetView> assets(long userId,long itemId){return db.query("SELECT id,position,mime,size_bytes FROM rs_answer_asset WHERE practice_item_id=? AND user_id=? ORDER BY position",(r,n)->new PracticeDtos.AssetView(String.valueOf(r.getLong(1)),r.getInt(2),r.getString(3),r.getLong(4),"/api/practice-assets/"+r.getLong(1)),itemId,userId);}
@@ -74,6 +106,6 @@ public class PracticeService {
  private JsonNode publicContent(JsonNode source){if(source==null||!source.isObject())return source;ObjectNode copy=(ObjectNode)source.deepCopy();copy.remove("explanation");return copy;}
  private JsonNode read(String value){try{return json.readTree(value);}catch(JsonProcessingException e){throw new IllegalStateException(e);}}private JsonNode readNullable(String value){return value==null?null:read(value);}private String write(JsonNode value){try{return json.writeValueAsString(value);}catch(JsonProcessingException e){throw new IllegalStateException(e);}}private String writeNullable(JsonNode value){return write(value==null?NullNode.getInstance():value);}
  private long count(String sql,Object... args){Long count=db.queryForObject(sql,Long.class,args);return count==null?0:count;}private static long parseId(String value){try{return Long.parseLong(value);}catch(Exception e){validation("Invalid identifier");return 0;}}private static void validation(String message){throw new BusinessException(HttpStatus.BAD_REQUEST,"VALIDATION_FAILED",message);}private static void conflict(String message){throw new BusinessException(HttpStatus.CONFLICT,"STATE_CONFLICT",message);}private static void notFound(){throw new BusinessException(HttpStatus.NOT_FOUND,"NOT_FOUND","Practice not found");}
- record PracticeRow(long id,long activityId,String status,int questionCount,String mixRatio,String submitKey,String submitHash,OffsetDateTime submittedAt){}record Candidate(long questionId,long versionId,long knowledgeId,String type,double maxScore,String content,String answer,String rubric,String sourceRef){}record GradeItem(long id,String type,double maxScore,String correctAnswer){}
+ record PracticeRow(long id,long activityId,String status,int questionCount,String mixRatio,String submitKey,String submitHash,OffsetDateTime submittedAt,String attemptType,Long redoWrongQuestionId){}record Candidate(long questionId,long versionId,long knowledgeId,String type,double maxScore,String content,String answer,String rubric,String sourceRef){}record GradeItem(long id,long questionId,long versionId,long knowledgeId,String type,double maxScore,String correctAnswer){}
  static class Picker {final List<Candidate> all,unanswered;final Set<Long> used=new HashSet<>();int unansweredIndex,allIndex;Picker(List<Candidate> all,List<Candidate> unanswered){this.all=all;this.unanswered=unanswered;}Candidate next(){while(unansweredIndex<unanswered.size()){Candidate value=unanswered.get(unansweredIndex++);if(used.add(value.questionId()))return value;}while(allIndex<all.size()){Candidate value=all.get(allIndex++);if(used.add(value.questionId()))return value;}return null;}int remaining(){int count=0;Set<Long> remainingIds=new HashSet<>(used);for(int i=unansweredIndex;i<unanswered.size();i++)if(remainingIds.add(unanswered.get(i).questionId()))count++;for(int i=allIndex;i<all.size();i++)if(remainingIds.add(all.get(i).questionId()))count++;return count;}}
 }

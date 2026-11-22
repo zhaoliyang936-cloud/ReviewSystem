@@ -20,6 +20,8 @@ import MasteryDetailPage from './mastery/MasteryDetailPage.vue'
 import RecommendationPage from './review/RecommendationPage.vue'
 import ReviewTaskPage from './review/ReviewTaskPage.vue'
 import ReviewTaskResultPage from './review/ReviewTaskResultPage.vue'
+import WrongQuestionListPage from './wrong/WrongQuestionListPage.vue'
+import WrongQuestionDetailPage from './wrong/WrongQuestionDetailPage.vue'
 import './practice/practice.css'
 const router = createRouter({ history: createWebHistory(), routes: [
  { path: '/', component: Home },
@@ -32,6 +34,8 @@ const router = createRouter({ history: createWebHistory(), routes: [
  { path: '/review/tasks/:id', component: ReviewTaskPage },
  { path: '/practice/:id/result', component: PracticeResultPage },
  { path: '/practice/:id', component: PracticePage },
+ { path: '/wrong', component: WrongQuestionListPage },
+ { path: '/wrong/:id', component: WrongQuestionDetailPage },
  { path: '/admin', component: AdminLayout, redirect: '/admin/knowledge', children: [
   { path: 'knowledge', component: KnowledgePage },
   { path: 'questions', component: QuestionListPage },

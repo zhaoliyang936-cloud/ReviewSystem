@@ -8,12 +8,14 @@ import cn.reviewsystem.practice.PracticeDtos;
 import cn.reviewsystem.practice.PracticeMixConfig;
 import cn.reviewsystem.recommend.RecommendationService;
 import cn.reviewsystem.recommend.VersionedRecommendationConfig;
+import cn.reviewsystem.wrong.WrongQuestionRecorder;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -21,8 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReviewTaskService {
- private final JdbcTemplate db;private final ObjectMapper json;private final RecommendationService recommendations;private final PracticeMixConfig mixConfig;private final VersionedRecommendationConfig cfg;private final GradingService grading;
- public ReviewTaskService(JdbcTemplate db,ObjectMapper json,RecommendationService recommendations,PracticeMixConfig mixConfig,VersionedRecommendationConfig cfg,GradingService grading){this.db=db;this.json=json;this.recommendations=recommendations;this.mixConfig=mixConfig;this.cfg=cfg;this.grading=grading;}
+ private final JdbcTemplate db;private final ObjectMapper json;private final RecommendationService recommendations;private final PracticeMixConfig mixConfig;private final VersionedRecommendationConfig cfg;private final GradingService grading;private final WrongQuestionRecorder wrongQuestions;
+ public ReviewTaskService(JdbcTemplate db,ObjectMapper json,RecommendationService recommendations,PracticeMixConfig mixConfig,VersionedRecommendationConfig cfg,GradingService grading){this(db,json,recommendations,mixConfig,cfg,grading,new WrongQuestionRecorder(db,json));}
+ @Autowired public ReviewTaskService(JdbcTemplate db,ObjectMapper json,RecommendationService recommendations,PracticeMixConfig mixConfig,VersionedRecommendationConfig cfg,GradingService grading,WrongQuestionRecorder wrongQuestions){this.db=db;this.json=json;this.recommendations=recommendations;this.mixConfig=mixConfig;this.cfg=cfg;this.grading=grading;this.wrongQuestions=wrongQuestions;}
  public record CreateRequest(Integer questionCount){}
  public record ItemView(String id,int position,String questionId,String questionVersionId,String knowledgeId,String questionType,double maxScore,JsonNode content,JsonNode reason,JsonNode draft,int draftVersion,List<PracticeDtos.AssetView> assets){}
  public record View(String id,String activityId,String status,int questionCount,JsonNode mixRatio,List<ItemView> items){}
@@ -34,7 +37,7 @@ public class ReviewTaskService {
  public record ResultItem(String itemId,int position,String type,double maxScore,JsonNode content,JsonNode submittedAnswer,JsonNode correctAnswer,JsonNode rubric,String explanation,JsonNode result,List<PracticeDtos.AssetView> assets){}
  private record Row(long id,long activityId,String status,int count,String mix){}
  private record TaskStateRow(long id,long activityId,String status,String submitKey,String submitHash,OffsetDateTime submittedAt,long sourceRevision){}
- private record GradeItem(long id,String type,double maxScore,String correctAnswer){}
+ private record GradeItem(long id,long questionId,long versionId,long knowledgeId,String type,double maxScore,String correctAnswer){}
  @Transactional public View create(long user,String key,CreateRequest request){
   if(key==null||key.isBlank()||key.length()>120)bad("Idempotency-Key is required and must not exceed 120 characters");
   int count=request==null||request.questionCount()==null?cfg.defaultCount():request.questionCount();if(count<1||count>cfg.maxCount())bad("questionCount must be between 1 and "+cfg.maxCount());
@@ -85,7 +88,7 @@ public class ReviewTaskService {
    if(answers.put(itemId,answer)!=null)bad("Duplicate task item answer");
    if(count("SELECT count(*) FROM rs_task_item WHERE id=? AND task_id=?",itemId,id)==0)bad("Answer item does not belong to the review task");
   }
-  var items=db.query("SELECT ti.id,ti.question_type,ti.max_score,v.answer_json::text FROM rs_task_item ti JOIN rs_question_version v ON v.id=ti.question_version_id WHERE ti.task_id=? ORDER BY ti.position",(r,n)->new GradeItem(r.getLong(1),r.getString(2),r.getDouble(3),r.getString(4)),id);
+  var items=db.query("SELECT ti.id,ti.question_id,ti.question_version_id,v.knowledge_point_id,ti.question_type,ti.max_score,v.answer_json::text FROM rs_task_item ti JOIN rs_question_version v ON v.id=ti.question_version_id WHERE ti.task_id=? ORDER BY ti.position",(r,n)->new GradeItem(r.getLong(1),r.getLong(2),r.getLong(3),r.getLong(4),r.getString(5),r.getDouble(6),r.getString(7)),id);
   for(GradeItem item:items){
    var submitted=answers.get(item.id());
    JsonNode answer=submitted==null||submitted.answer()==null?NullNode.getInstance():submitted.answer();
@@ -93,6 +96,9 @@ public class ReviewTaskService {
    var grade=grading.grade(item.type(),item.maxScore(),answer,read(item.correctAnswer()));
    db.update("UPDATE rs_task_item SET final_answer_json=CAST(? AS jsonb),result_json=CAST(? AS jsonb),grading_status=? WHERE id=?",write(answer),write(grade.result()),grade.status(),item.id());
    for(long assetId:submittedAssets)db.update("UPDATE rs_answer_asset SET state='SUBMITTED' WHERE id=?",assetId);
+   JsonNode passedNode=grade.result().get("passed");
+   Boolean passed=passedNode!=null&&passedNode.isBoolean()?passedNode.asBoolean():null;
+   wrongQuestions.record(user,WrongQuestionRecorder.Source.TASK,null,null,item.id(),item.questionId(),item.versionId(),item.knowledgeId(),item.type(),passed,answer,grade.result(),"ORDINARY",null);
   }
   db.update("UPDATE rs_review_task SET submit_key=?,submit_hash=?,submitted_at=CURRENT_TIMESTAMP,status='COMPLETED' WHERE id=?",key,hash,id);
   db.update("UPDATE rs_learning_activity SET status='COMPLETED',updated_at=CURRENT_TIMESTAMP WHERE id=?",row.activityId());
