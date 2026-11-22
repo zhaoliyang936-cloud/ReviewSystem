@@ -399,7 +399,7 @@ class WrongQuestionIntegrationTest {
         String answerV2 = json.writeValueAsString(Map.of("correctOption", "B"));
         long v2Id = db.queryForObject(
                 "INSERT INTO rs_question_version(question_id, version, subject_id, knowledge_point_id, type, content_json, answer_json, max_score) VALUES (?, 2, 1, ?, 'CHOICE', CAST(? AS jsonb), CAST(? AS jsonb), 2) RETURNING id",
-                Long.class, qId, kpId, contentV2, answerV2
+                Long.class, qId, kp2Id, contentV2, answerV2
         );
         db.update("UPDATE rs_question SET current_version_id = ? WHERE id = ?", v2Id, qId);
 
@@ -413,9 +413,10 @@ class WrongQuestionIntegrationTest {
 
         assertEquals(1L, db.queryForObject("SELECT count(*) FROM rs_wrong_question WHERE user_id = ? AND question_id = ?",
                 Long.class, userId, qId));
-        var wqAfter = db.queryForMap("SELECT wrong_count, question_version_id, latest_attempt_id FROM rs_wrong_question WHERE id = ?", wqId);
+        var wqAfter = db.queryForMap("SELECT wrong_count, question_version_id, knowledge_id, latest_attempt_id FROM rs_wrong_question WHERE id = ?", wqId);
         assertEquals(2, ((Number) wqAfter.get("wrong_count")).intValue());
         assertEquals(v2Id, ((Number) wqAfter.get("question_version_id")).longValue());
+        assertEquals(kp2Id, ((Number) wqAfter.get("knowledge_id")).longValue());
         long secondAttemptId = ((Number) wqAfter.get("latest_attempt_id")).longValue();
         assertNotEquals(firstAttemptId, secondAttemptId);
         long maxAttemptId = db.queryForObject("SELECT max(id) FROM rs_wrong_attempt WHERE wrong_question_id = ?", Long.class, wqId);

@@ -69,6 +69,7 @@ public class WrongQuestionRecorder {
                         wrong_count = rs_wrong_question.wrong_count + 1,
                         last_wrong_at = CURRENT_TIMESTAMP,
                         question_version_id = EXCLUDED.question_version_id,
+                        knowledge_id = EXCLUDED.knowledge_id,
                         status = 'PENDING',
                         mastered_at = NULL
                     RETURNING id
