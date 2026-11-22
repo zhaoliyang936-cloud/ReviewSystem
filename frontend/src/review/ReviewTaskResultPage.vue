@@ -1,9 +1,12 @@
 <script setup>
-import { computed,onMounted,ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api'
+import AiTutoringPanel from '../ai/AiTutoringPanel.vue'
 
 const route=useRoute(),result=ref(null),error=ref(''),retrying=ref({})
+const explainJobs=ref({}),explainBusy=ref({}),explainErrors=ref({}),explainErrorCodes=ref({})
+let pollTimers={}
 async function load(){try{result.value=await api(`/api/review/tasks/${route.params.id}/result`)}catch(e){error.value=e.message}}
 async function retryReview(itemId){
  retrying.value[itemId]=true;error.value=''
@@ -11,6 +14,27 @@ async function retryReview(itemId){
  catch(e){error.value=e.message}
  finally{retrying.value[itemId]=false}
 }
+async function requestExplanation(item){
+ if(!item.wrongQuestionId)return
+ const key=item.itemId
+ explainErrors.value[key]='';explainErrorCodes.value[key]='';explainBusy.value[key]=true
+ clearTimeout(pollTimers[key])
+ try{
+  const job=await api('/api/review/ai/jobs',{method:'POST',body:{scenario:'EXPLANATION',wrongQuestionId:Number(item.wrongQuestionId)}})
+  explainJobs.value[key]=job
+  if(job.state==='QUEUED'||job.state==='RUNNING'){
+   const tick=async()=>{
+    try{
+     const res=await api(`/api/review/ai/jobs/${job.jobId}`)
+     if(res.state==='QUEUED'||res.state==='RUNNING'){pollTimers[key]=setTimeout(tick,1000)}
+     else{explainJobs.value[key]=res;explainBusy.value[key]=false}
+    }catch(e){explainBusy.value[key]=false;explainErrors.value[key]=e.message||'获取 AI 讲解失败'}
+   }
+   pollTimers[key]=setTimeout(tick,600)
+  }else{explainBusy.value[key]=false}
+ }catch(e){explainBusy.value[key]=false;explainErrorCodes.value[key]=e.code||'';explainErrors.value[key]=e.message||'获取 AI 讲解失败'}
+}
+onBeforeUnmount(()=>Object.values(pollTimers).forEach(clearTimeout))
 onMounted(load)
 
 const summary=computed(()=>{
@@ -130,6 +154,21 @@ function referenceAnswer(item){
    <p v-else-if="item.result?.provisional" class="p-muted r-note">
     {{item.result.suggestion_disclaimer || 'AI 建议分不构成正式成绩'}}
    </p>
+   <div v-if="item.result?.passed===false&&item.wrongQuestionId" class="p-actions" style="margin-top:10px">
+    <button class="p-secondary" :disabled="explainBusy[item.itemId]" @click="requestExplanation(item)">
+     {{explainBusy[item.itemId]?'生成讲解中…':'AI 讲解'}}
+    </button>
+    <RouterLink :to="`/wrong/${item.wrongQuestionId}`">查看错题详情</RouterLink>
+   </div>
+   <AiTutoringPanel
+    v-if="explainBusy[item.itemId]||explainErrors[item.itemId]||explainJobs[item.itemId]"
+    :job="explainJobs[item.itemId]"
+    :loading="Boolean(explainBusy[item.itemId])"
+    :error="explainErrors[item.itemId]||''"
+    :error-code="explainErrorCodes[item.itemId]||''"
+    title="AI 错题讲解"
+    @retry="requestExplanation(item)"
+   />
   </article>
 
   <div class="p-card p-actions">

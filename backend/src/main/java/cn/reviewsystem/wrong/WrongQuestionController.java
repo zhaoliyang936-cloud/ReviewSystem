@@ -70,12 +70,15 @@ public class WrongQuestionController {
     }
 
     @PostMapping("/api/wrong-questions/{id}/variant")
-    public void variant(@PathVariable long id) {
-        throw new BusinessException(
-                HttpStatus.NOT_IMPLEMENTED,
-                "NOT_IMPLEMENTED",
-                "AI variant generation is not implemented in M09"
-        );
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public WrongQuestionDtos.VariantJobView variant(
+            Authentication authentication,
+            @PathVariable long id,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestParam(required = false) String userId
+    ) {
+        rejectUserId(userId);
+        return service.createVariant(user(authentication), id, idempotencyKey);
     }
 
     private static long user(Authentication authentication) {

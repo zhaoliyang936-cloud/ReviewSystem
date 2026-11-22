@@ -1,6 +1,10 @@
 package cn.reviewsystem.wrong;
 
+import cn.reviewsystem.ai.AiJobService;
+import cn.reviewsystem.ai.AiProperties;
+import cn.reviewsystem.ai.PromptTemplates;
 import cn.reviewsystem.api.BusinessException;
+import cn.reviewsystem.practice.AiAvailabilityPort;
 import cn.reviewsystem.practice.PracticeDtos;
 import cn.reviewsystem.practice.PracticeService;
 import cn.reviewsystem.question.PageResult;
@@ -14,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -30,11 +35,29 @@ public class WrongQuestionService {
     private final JdbcTemplate db;
     private final ObjectMapper json;
     private final PracticeService practices;
+    private final AiAvailabilityPort ai;
+    private final AiJobService aiJobs;
+    private final AiProperties aiProperties;
 
     public WrongQuestionService(JdbcTemplate db, ObjectMapper json, PracticeService practices) {
+        this(db, json, practices, null, null, null);
+    }
+
+    @Autowired
+    public WrongQuestionService(
+            JdbcTemplate db,
+            ObjectMapper json,
+            PracticeService practices,
+            @Autowired(required = false) AiAvailabilityPort ai,
+            @Autowired(required = false) AiJobService aiJobs,
+            @Autowired(required = false) AiProperties aiProperties
+    ) {
         this.db = db;
         this.json = json;
         this.practices = practices;
+        this.ai = ai;
+        this.aiJobs = aiJobs;
+        this.aiProperties = aiProperties;
     }
 
     public PageResult<WrongQuestionDtos.ListItem> list(
@@ -110,7 +133,7 @@ public class WrongQuestionService {
                 SELECT wq.id, wq.question_id, wq.question_version_id, wq.knowledge_id,
                        k.code, k.name, v.type, wq.source_type, q.status, wq.status,
                        wq.wrong_count, wq.first_wrong_at, wq.last_wrong_at, wq.mastered_at,
-                       v.content_json->>'stem' AS stem,
+                       v.content_json->>'stem' AS stem, wq.origin_wrong_question_id,
                        la.id AS la_id, la.attempt_type AS la_type, la.practice_id AS la_practice_id,
                        la.item_id AS la_item_id, la.task_item_id AS la_task_item_id,
                        la.answer_json::text AS la_answer, la.grade_json::text AS la_grade,
@@ -121,6 +144,7 @@ public class WrongQuestionService {
         var items = db.query(selectSql, (r, n) -> {
             WrongQuestionDtos.AttemptView latestAttempt = mapAttemptOrNull(r, "la_");
             boolean aiJudged = latestAttempt != null && latestAttempt.aiJudged();
+            Long originWqId = r.getObject("origin_wrong_question_id", Long.class);
             return new WrongQuestionDtos.ListItem(
                     String.valueOf(r.getLong("id")),
                     String.valueOf(r.getLong("question_id")),
@@ -138,7 +162,8 @@ public class WrongQuestionService {
                     r.getObject("mastered_at", OffsetDateTime.class),
                     r.getString("stem"),
                     aiJudged,
-                    latestAttempt
+                    latestAttempt,
+                    originWqId == null ? null : String.valueOf(originWqId)
             );
         }, queryParams.toArray());
 
@@ -152,7 +177,8 @@ public class WrongQuestionService {
                        k.code, k.name, v.type, wq.source_type, q.status AS q_status, wq.status AS wq_status,
                        wq.wrong_count, wq.first_wrong_at, wq.last_wrong_at, wq.mastered_at,
                        wq.latest_attempt_id,
-                       v.content_json::text, v.answer_json::text, v.rubric_json::text
+                       v.content_json::text, v.answer_json::text, v.rubric_json::text,
+                       wq.origin_wrong_question_id
                 FROM rs_wrong_question wq
                 JOIN rs_question q ON q.id = wq.question_id
                 JOIN rs_question_version v ON v.id = wq.question_version_id
@@ -177,7 +203,8 @@ public class WrongQuestionService {
                         r.getObject("latest_attempt_id", Long.class),
                         r.getString(16),
                         r.getString(17),
-                        r.getString(18)
+                        r.getString(18),
+                        r.getObject("origin_wrong_question_id", Long.class)
                 ),
                 id, userId
         );
@@ -241,8 +268,137 @@ public class WrongQuestionService {
                 explanation,
                 latestAttempt,
                 attempts,
-                feedback
+                feedback,
+                row.originWrongQuestionId() == null ? null : String.valueOf(row.originWrongQuestionId())
         );
+    }
+
+    @Transactional
+    public WrongQuestionDtos.VariantJobView createVariant(
+            long userId,
+            long wrongQuestionId,
+            String idempotencyKey
+    ) {
+        if (idempotencyKey == null || idempotencyKey.isBlank() || idempotencyKey.length() > 120) {
+            validation("Idempotency-Key is required and must not exceed 120 characters");
+        }
+        String key = idempotencyKey.trim();
+        db.query("SELECT pg_advisory_xact_lock(?)", r -> {}, userId);
+
+        var wqRows = db.query(
+                """
+                SELECT wq.question_id, q.status, q.current_version_id, v.knowledge_point_id
+                FROM rs_wrong_question wq
+                JOIN rs_question q ON q.id = wq.question_id
+                JOIN rs_question_version v ON v.id = q.current_version_id
+                WHERE wq.id = ? AND wq.user_id = ?
+                """,
+                (r, n) -> new Object[]{
+                        r.getLong(1),
+                        r.getString(2),
+                        r.getLong(3),
+                        r.getLong(4)
+                },
+                wrongQuestionId, userId
+        );
+        if (wqRows.isEmpty()) {
+            notFound();
+        }
+        Object[] wq = wqRows.getFirst();
+        long questionId = (Long) wq[0];
+        String questionStatus = (String) wq[1];
+        long currentVersionId = (Long) wq[2];
+        long knowledgeId = (Long) wq[3];
+
+        var priorJobs = db.query(
+                """
+                SELECT id, state, (snapshot_refs_json->>'wrongQuestionId')::bigint
+                FROM rs_ai_job
+                WHERE user_id = ? AND scenario = 'WRONG_VARIANT' AND snapshot_refs_json->>'idempotencyKey' = ?
+                ORDER BY id DESC LIMIT 1
+                """,
+                (r, n) -> new Object[]{
+                        r.getLong(1),
+                        r.getString(2),
+                        r.getObject(3, Long.class)
+                },
+                userId, key
+        );
+        if (!priorJobs.isEmpty()) {
+            Object[] prior = priorJobs.getFirst();
+            Long priorWqId = (Long) prior[2];
+            if (priorWqId != null && priorWqId == wrongQuestionId) {
+                return new WrongQuestionDtos.VariantJobView((Long) prior[0], (String) prior[1]);
+            }
+            throw new BusinessException(
+                    HttpStatus.CONFLICT,
+                    "IDEMPOTENCY_CONFLICT",
+                    "The idempotency key was already used with a different request"
+            );
+        }
+
+        if (!"ACTIVE".equals(questionStatus)) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT,
+                    "QUESTION_SUSPENDED",
+                    "Question is suspended and cannot generate variant"
+            );
+        }
+
+        Long activeCount = db.queryForObject(
+                "SELECT count(*) FROM rs_learning_activity WHERE user_id = ? AND subject_id = 1 AND status IN ('PREPARING','READY','IN_PROGRESS','GRADING')",
+                Long.class,
+                userId
+        );
+        if (activeCount != null && activeCount > 0) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT,
+                    "STATE_CONFLICT",
+                    "An active learning activity already exists"
+            );
+        }
+
+        AiAvailabilityPort.AiStatus aiStatus = ai != null
+                ? ai.status(userId)
+                : AiAvailabilityPort.AiStatus.no("AI_DISABLED");
+        if (!aiStatus.available() || aiJobs == null) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT,
+                    "AI_UNAVAILABLE",
+                    aiStatus.reasonCode() == null ? "AI_DISABLED" : aiStatus.reasonCode()
+            );
+        }
+
+        ObjectNode refs = json.createObjectNode();
+        refs.put("wrongQuestionId", wrongQuestionId);
+        refs.put("questionId", questionId);
+        refs.put("questionVersionId", currentVersionId);
+        refs.put("knowledgeId", knowledgeId);
+        refs.put("idempotencyKey", key);
+
+        String activeKey = "variant:" + userId + ":" + wrongQuestionId;
+        String templateVersion = PromptTemplates.versionFor("WRONG_VARIANT");
+        String model = aiProperties != null && aiProperties.getModel() != null && !aiProperties.getModel().isBlank()
+                ? aiProperties.getModel()
+                : "unconfigured";
+        String contextHash = AiJobService.sha256(
+                userId + ":WRONG_VARIANT:" + wrongQuestionId + ":" + templateVersion + ":" + model);
+        int timeoutSec = aiProperties != null ? Math.max(5, aiProperties.getPrepareTimeoutSeconds()) : 90;
+
+        long jobId = aiJobs.createJob(
+                userId,
+                "WRONG_VARIANT",
+                contextHash,
+                activeKey,
+                refs,
+                currentVersionId,
+                knowledgeId,
+                null,
+                "QUEUED",
+                OffsetDateTime.now().plusSeconds(timeoutSec)
+        );
+        String jobState = db.queryForObject("SELECT state FROM rs_ai_job WHERE id = ?", String.class, jobId);
+        return new WrongQuestionDtos.VariantJobView(jobId, jobState == null ? "QUEUED" : jobState);
     }
 
     @Transactional
@@ -293,6 +449,7 @@ public class WrongQuestionService {
             notFound();
         }
         long questionId = wqRows.getFirst();
+        db.query("SELECT pg_advisory_xact_lock(?)", r -> {}, 900_000_000L + questionId);
 
         WrongQuestionDtos.FeedbackView existing = findFeedback(id, userId);
         if (existing != null) {
@@ -309,6 +466,26 @@ public class WrongQuestionService {
                 (r, n) -> mapFeedback(r),
                 userId, id, questionId, category, comment
         );
+        if ("SUSPECTED_ERROR".equals(category)) {
+            Long distinctUsers = db.queryForObject(
+                    """
+                    SELECT count(DISTINCT user_id) FROM rs_question_feedback
+                    WHERE question_id = ? AND category = 'SUSPECTED_ERROR' AND status <> 'CLOSED'
+                    """,
+                    Long.class,
+                    questionId
+            );
+            if (distinctUsers != null && distinctUsers >= 3) {
+                db.update(
+                        """
+                        INSERT INTO rs_question_review_case(question_id, trigger_feedback_count, reason)
+                        VALUES (?, 3, 'THREE_STUDENT_REPORTS')
+                        ON CONFLICT (question_id) DO NOTHING
+                        """,
+                        questionId
+                );
+            }
+        }
         if (!inserted.isEmpty()) {
             return inserted.getFirst();
         }
@@ -429,6 +606,7 @@ public class WrongQuestionService {
             Long latestAttemptId,
             String contentJson,
             String answerJson,
-            String rubricJson
+            String rubricJson,
+            Long originWrongQuestionId
     ) {}
 }

@@ -83,7 +83,11 @@ public class ReviewTaskService {
     public record SubmitRequest(List<FinalAnswer> answers, String sourceMode, String userId, String subjectId) {}
     public record FinalAnswer(String itemId, JsonNode answer, List<String> assetIds) {}
     public record ResultView(String id, String activityId, String status, OffsetDateTime submittedAt, List<ResultItem> items) {}
-    public record ResultItem(String itemId, int position, String type, double maxScore, JsonNode content, JsonNode submittedAnswer, JsonNode correctAnswer, JsonNode rubric, String explanation, JsonNode result, List<PracticeDtos.AssetView> assets) {}
+    public record ResultItem(String itemId, int position, String type, double maxScore, JsonNode content, JsonNode submittedAnswer, JsonNode correctAnswer, JsonNode rubric, String explanation, JsonNode result, List<PracticeDtos.AssetView> assets, String wrongQuestionId) {
+        public ResultItem(String itemId, int position, String type, double maxScore, JsonNode content, JsonNode submittedAnswer, JsonNode correctAnswer, JsonNode rubric, String explanation, JsonNode result, List<PracticeDtos.AssetView> assets) {
+            this(itemId, position, type, maxScore, content, submittedAnswer, correctAnswer, rubric, explanation, result, assets, null);
+        }
+    }
     private record Row(long id, long activityId, String status, int count, String mix) {}
     private record TaskStateRow(long id, long activityId, String status, String submitKey, String submitHash, OffsetDateTime submittedAt, long sourceRevision) {}
     private record GradeItem(long id, long questionId, long versionId, long knowledgeId, String type, double maxScore, String correctAnswer, String rubric, String stem) {}
@@ -173,6 +177,9 @@ public class ReviewTaskService {
             db.update("INSERT INTO rs_task_item(task_id,question_id,question_version_id,knowledge_id,question_type,max_score,position,reason_json) SELECT ?,q.id,v.id,v.knowledge_point_id,v.type,v.max_score,?,CAST(? AS jsonb) FROM rs_question q JOIN rs_question_version v ON v.id=? WHERE q.id=?",
                     task, i, write(json.valueToTree(item.reason())), Long.parseLong(item.questionVersionId()), Long.parseLong(item.questionId()));
         }
+
+        db.update("INSERT INTO rs_student_course_guard(user_id,subject_id) VALUES (?,1) ON CONFLICT DO NOTHING", user);
+        db.update("UPDATE rs_student_course_guard SET tutoring_epoch=tutoring_epoch+1 WHERE user_id=? AND subject_id=1", user);
 
         if (preparing) {
             ObjectNode refs = json.createObjectNode();
@@ -361,11 +368,12 @@ public class ReviewTaskService {
     public ResultView result(long user, long id) {
         TaskStateRow row = taskState(user, id, false);
         if (!row.status().equals("COMPLETED")) conflict("Review task result is available only after completion");
-        var items = db.query("SELECT ti.id,ti.position,ti.question_type,ti.max_score,ti.final_answer_json::text,ti.result_json::text,v.content_json::text,v.answer_json::text,v.rubric_json::text FROM rs_task_item ti JOIN rs_question_version v ON v.id=ti.question_version_id WHERE ti.task_id=? ORDER BY ti.position", (r, n) -> {
+        var items = db.query("SELECT ti.id,ti.position,ti.question_type,ti.max_score,ti.final_answer_json::text,ti.result_json::text,v.content_json::text,v.answer_json::text,v.rubric_json::text,wq.id FROM rs_task_item ti JOIN rs_question_version v ON v.id=ti.question_version_id LEFT JOIN rs_wrong_question wq ON wq.user_id=? AND wq.question_id=ti.question_id WHERE ti.task_id=? ORDER BY ti.position", (r, n) -> {
             JsonNode stored = read(r.getString(7));
             String explanation = stored.path("explanation").isTextual() ? stored.path("explanation").asText() : "";
-            return new ResultItem(String.valueOf(r.getLong(1)), r.getInt(2), r.getString(3), r.getDouble(4), publicContent(stored), readNullable(r.getString(5)), read(r.getString(8)), readNullable(r.getString(9)), explanation, readNullable(r.getString(6)), submittedAssets(user, r.getLong(1)));
-        }, id);
+            Long wqId = r.getObject(10, Long.class);
+            return new ResultItem(String.valueOf(r.getLong(1)), r.getInt(2), r.getString(3), r.getDouble(4), publicContent(stored), readNullable(r.getString(5)), read(r.getString(8)), readNullable(r.getString(9)), explanation, readNullable(r.getString(6)), submittedAssets(user, r.getLong(1)), wqId == null ? null : String.valueOf(wqId));
+        }, user, id);
         return new ResultView(String.valueOf(row.id()), String.valueOf(row.activityId()), row.status(), row.submittedAt(), items);
     }
 

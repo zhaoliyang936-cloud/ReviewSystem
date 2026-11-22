@@ -37,8 +37,33 @@ public final class WrongQuestionDtos {
             OffsetDateTime masteredAt,
             String stem,
             boolean aiJudged,
-            AttemptView latestAttempt
-    ) {}
+            AttemptView latestAttempt,
+            String originWrongQuestionId
+    ) {
+        public ListItem(
+                String id,
+                String questionId,
+                String questionVersionId,
+                String knowledgeId,
+                String knowledgeCode,
+                String knowledgeName,
+                String questionType,
+                String sourceType,
+                String questionStatus,
+                String status,
+                int wrongCount,
+                OffsetDateTime firstWrongAt,
+                OffsetDateTime lastWrongAt,
+                OffsetDateTime masteredAt,
+                String stem,
+                boolean aiJudged,
+                AttemptView latestAttempt
+        ) {
+            this(id, questionId, questionVersionId, knowledgeId, knowledgeCode, knowledgeName,
+                    questionType, sourceType, questionStatus, status, wrongCount, firstWrongAt,
+                    lastWrongAt, masteredAt, stem, aiJudged, latestAttempt, null);
+        }
+    }
 
     public record FeedbackView(
             String id,
@@ -72,8 +97,41 @@ public final class WrongQuestionDtos {
             String explanation,
             AttemptView latestAttempt,
             List<AttemptView> attempts,
-            FeedbackView feedback
-    ) {}
+            FeedbackView feedback,
+            String originWrongQuestionId
+    ) {
+        public DetailView(
+                String id,
+                String questionId,
+                String questionVersionId,
+                String knowledgeId,
+                String knowledgeCode,
+                String knowledgeName,
+                String questionType,
+                String sourceType,
+                String questionStatus,
+                String status,
+                int wrongCount,
+                OffsetDateTime firstWrongAt,
+                OffsetDateTime lastWrongAt,
+                OffsetDateTime masteredAt,
+                boolean aiJudged,
+                JsonNode content,
+                JsonNode correctAnswer,
+                JsonNode rubric,
+                String explanation,
+                AttemptView latestAttempt,
+                List<AttemptView> attempts,
+                FeedbackView feedback
+        ) {
+            this(id, questionId, questionVersionId, knowledgeId, knowledgeCode, knowledgeName,
+                    questionType, sourceType, questionStatus, status, wrongCount, firstWrongAt,
+                    lastWrongAt, masteredAt, aiJudged, content, correctAnswer, rubric, explanation,
+                    latestAttempt, attempts, feedback, null);
+        }
+    }
+
+    public record VariantJobView(long jobId, String state) {}
 
     public record RedoRequest(String mode, String userId, String subjectId) {}
 

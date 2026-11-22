@@ -1,18 +1,27 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api'
+import AiTutoringPanel from '../ai/AiTutoringPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
 const detail = ref(null)
 const error = ref('')
 const redoBusy = ref(false)
+const variantBusy = ref(false)
+const variantStatus = ref('')
+const variantError = ref('')
+const explainJob = ref(null)
+const explainBusy = ref(false)
+const explainError = ref('')
+const explainErrorCode = ref('')
 const fbCategory = ref('SUSPECTED_ERROR')
 const fbComment = ref('')
 const fbBusy = ref(false)
 const fbMessage = ref('')
 const fbError = ref('')
+let pollTimer = null
 
 const TYPE_LABELS = {
   CHOICE: '单选题',
@@ -99,6 +108,91 @@ async function submitFeedback() {
   }
 }
 
+async function generateVariant() {
+  variantError.value = ''
+  variantStatus.value = ''
+  variantBusy.value = true
+  try {
+    const job = await api(`/api/wrong-questions/${route.params.id}/variant`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': crypto.randomUUID() }
+    })
+    variantStatus.value = '正在生成变式题…'
+    pollJob(job.jobId, async (done) => {
+      variantBusy.value = false
+      if (done.state === 'SUCCEEDED' && done.output?.practiceId) {
+        router.push(`/practice/${done.output.practiceId}`)
+      } else {
+        variantStatus.value = ''
+        variantError.value = done.errorCode === 'AI_QUOTA_EXCEEDED'
+          ? '今日生成额度已耗尽'
+          : `生成变式失败（${done.errorCode || done.state}）`
+      }
+    }, (errMsg) => {
+      variantBusy.value = false
+      variantStatus.value = ''
+      variantError.value = errMsg
+    })
+  } catch (e) {
+    variantBusy.value = false
+    if (e.code === 'AI_UNAVAILABLE') {
+      variantError.value = e.message === 'AI_QUOTA_EXCEEDED' ? '今日 AI 额度已耗尽，无法生成变式' : 'AI 服务未开启，暂不可用'
+    } else if (e.code === 'STATE_CONFLICT') {
+      variantError.value = '已有进行中的学习活动，请先完成或取消后再生成变式'
+    } else if (e.code === 'QUESTION_SUSPENDED') {
+      variantError.value = '原题已下架，无法生成变式'
+    } else {
+      variantError.value = e.message || '生成变式失败'
+    }
+  }
+}
+
+async function requestExplanation() {
+  explainError.value = ''
+  explainErrorCode.value = ''
+  explainBusy.value = true
+  try {
+    const job = await api('/api/review/ai/jobs', {
+      method: 'POST',
+      body: { scenario: 'EXPLANATION', wrongQuestionId: Number(route.params.id) }
+    })
+    explainJob.value = job
+    if (job.state === 'QUEUED' || job.state === 'RUNNING') {
+      pollJob(job.jobId, (done) => {
+        explainJob.value = done
+        explainBusy.value = false
+      }, (errMsg) => {
+        explainBusy.value = false
+        explainError.value = errMsg
+      })
+    } else {
+      explainBusy.value = false
+    }
+  } catch (e) {
+    explainBusy.value = false
+    explainErrorCode.value = e.code || ''
+    explainError.value = e.message || '获取 AI 讲解失败'
+  }
+}
+
+function pollJob(jobId, onDone, onErr) {
+  clearTimeout(pollTimer)
+  const tick = async () => {
+    try {
+      const res = await api(`/api/review/ai/jobs/${jobId}`)
+      if (res.state === 'QUEUED' || res.state === 'RUNNING') {
+        pollTimer = setTimeout(tick, 1000)
+      } else {
+        onDone(res)
+      }
+    } catch (e) {
+      onErr(e.message || '查询作业状态失败')
+    }
+  }
+  pollTimer = setTimeout(tick, 600)
+}
+
+onBeforeUnmount(() => clearTimeout(pollTimer))
 onMounted(load)
 </script>
 
@@ -123,6 +217,9 @@ onMounted(load)
           <span class="p-pill">{{ TYPE_LABELS[detail.questionType] || detail.questionType }}</span>
           <span class="p-pill">{{ detail.sourceType === 'AI_GENERATED' ? 'AI 生成' : '人工录入' }}</span>
           <span class="p-pill">{{ detail.status === 'MASTERED' ? '已掌握' : '待重做' }}</span>
+          <span v-if="detail.originWrongQuestionId" class="p-pill">
+            AI 变式·源自第 {{ detail.originWrongQuestionId }} 题
+          </span>
           <span v-if="detail.aiJudged" class="p-pill">AI 判定</span>
           <span class="p-muted">知识点：{{ detail.knowledgeCode }} · {{ detail.knowledgeName }}</span>
         </div>
@@ -152,8 +249,34 @@ onMounted(load)
           >
             {{ detail.questionStatus !== 'ACTIVE' ? '题目已下架，无法重做' : redoBusy ? '正在创建重做练习…' : '原题重做' }}
           </button>
+          <button
+            class="p-secondary"
+            :disabled="variantBusy || detail.questionStatus !== 'ACTIVE'"
+            @click="generateVariant"
+          >
+            {{ variantBusy ? '生成变式中…' : '生成变式' }}
+          </button>
+          <button
+            class="p-secondary"
+            :disabled="explainBusy"
+            @click="requestExplanation"
+          >
+            {{ explainBusy ? '生成讲解中…' : 'AI 讲解' }}
+          </button>
         </div>
+        <p v-if="variantStatus" class="p-muted" style="margin-top: 8px">{{ variantStatus }}</p>
+        <p v-if="variantError" class="p-error" role="alert" style="margin-top: 8px">{{ variantError }}</p>
       </div>
+
+      <AiTutoringPanel
+        v-if="explainBusy || explainError || explainJob"
+        :job="explainJob"
+        :loading="explainBusy"
+        :error="explainError"
+        :error-code="explainErrorCode"
+        title="AI 错题讲解"
+        @retry="requestExplanation"
+      />
 
       <div class="p-card">
         <h3>最近作答与参考答案</h3>

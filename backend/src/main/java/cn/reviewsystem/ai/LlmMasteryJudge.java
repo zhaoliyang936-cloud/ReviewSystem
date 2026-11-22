@@ -75,7 +75,7 @@ public class LlmMasteryJudge implements MasteryJudgePort {
             return null;
         }
 
-        if (!quotaService.tryConsume(userId)) {
+        if (!quotaService.tryConsume(userId, AiQuotaService.Bucket.MASTERY)) {
             return null;
         }
 

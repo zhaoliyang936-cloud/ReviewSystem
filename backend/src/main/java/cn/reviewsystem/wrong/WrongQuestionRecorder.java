@@ -59,26 +59,42 @@ public class WrongQuestionRecorder {
                     String.class,
                     questionId
             ));
+            Long originWrongId = "AI_VARIANT".equals(attemptType) ? linkedWrongQuestionId : null;
             long wqId = Objects.requireNonNull(db.queryForObject(
                     """
                     INSERT INTO rs_wrong_question(
                         user_id, question_id, question_version_id, knowledge_id,
-                        source_type, status, wrong_count, first_wrong_at, last_wrong_at
-                    ) VALUES (?, ?, ?, ?, ?, 'PENDING', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        source_type, status, wrong_count, first_wrong_at, last_wrong_at,
+                        origin_wrong_question_id
+                    ) VALUES (?, ?, ?, ?, ?, 'PENDING', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
                     ON CONFLICT (user_id, question_id) DO UPDATE SET
                         wrong_count = rs_wrong_question.wrong_count + 1,
                         last_wrong_at = CURRENT_TIMESTAMP,
                         question_version_id = EXCLUDED.question_version_id,
                         knowledge_id = EXCLUDED.knowledge_id,
                         status = 'PENDING',
-                        mastered_at = NULL
+                        mastered_at = NULL,
+                        origin_wrong_question_id = COALESCE(rs_wrong_question.origin_wrong_question_id, EXCLUDED.origin_wrong_question_id)
                     RETURNING id
                     """,
                     Long.class,
-                    userId, questionId, versionId, knowledgeId, origin
+                    userId, questionId, versionId, knowledgeId, origin, originWrongId
             ));
             long attemptId = insertAttempt(wqId, practiceId, itemId, taskItemId, attemptType, answer, grade, false);
             db.update("UPDATE rs_wrong_question SET latest_attempt_id = ? WHERE id = ?", attemptId, wqId);
+            return;
+        }
+
+        if ("AI_VARIANT".equals(attemptType) && linkedWrongQuestionId != null) {
+            var originRows = db.query(
+                    "SELECT id FROM rs_wrong_question WHERE id = ? AND user_id = ? FOR UPDATE",
+                    (r, n) -> r.getLong(1),
+                    linkedWrongQuestionId, userId
+            );
+            if (!originRows.isEmpty()) {
+                long originWqId = originRows.getFirst();
+                insertAttempt(originWqId, practiceId, itemId, taskItemId, "AI_VARIANT", answer, grade, true);
+            }
             return;
         }
 

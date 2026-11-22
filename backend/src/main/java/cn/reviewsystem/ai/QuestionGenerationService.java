@@ -1,5 +1,7 @@
 package cn.reviewsystem.ai;
 
+import cn.reviewsystem.material.MaterialSearchPort;
+import cn.reviewsystem.practice.PracticeMixConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,6 +11,7 @@ import java.time.Duration;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -26,6 +29,8 @@ public class QuestionGenerationService {
     private final PromptTemplates prompts;
     private final AiOutputValidator validator;
     private final TransactionTemplate tx;
+    private final MaterialSearchPort materialSearch;
+    private final PracticeMixConfig mixConfig;
 
     public QuestionGenerationService(
             JdbcTemplate db,
@@ -36,6 +41,21 @@ public class QuestionGenerationService {
             PromptTemplates prompts,
             AiOutputValidator validator,
             PlatformTransactionManager txManager) {
+        this(db, json, properties, quotaService, llmClient, prompts, validator, txManager, null, null);
+    }
+
+    @Autowired
+    public QuestionGenerationService(
+            JdbcTemplate db,
+            ObjectMapper json,
+            AiProperties properties,
+            AiQuotaService quotaService,
+            LlmClient llmClient,
+            PromptTemplates prompts,
+            AiOutputValidator validator,
+            PlatformTransactionManager txManager,
+            @Autowired(required = false) MaterialSearchPort materialSearch,
+            @Autowired(required = false) PracticeMixConfig mixConfig) {
         this.db = db;
         this.json = json;
         this.properties = properties;
@@ -44,6 +64,8 @@ public class QuestionGenerationService {
         this.prompts = prompts;
         this.validator = validator;
         this.tx = new TransactionTemplate(txManager);
+        this.materialSearch = materialSearch;
+        this.mixConfig = mixConfig;
     }
 
     public record GeneratedQuestion(
@@ -163,10 +185,134 @@ public class QuestionGenerationService {
                 persisted.isEmpty() ? lastError : null);
     }
 
-    private GeneratedQuestion persistQuestion(
+    public record VariantCandidate(
+            AiOutputValidator.ParsedQuestion question,
+            String relationToSource,
+            String difficultyNote,
+            JsonNode usageJson,
+            String errorCode) {}
+
+    public VariantCandidate generateVariantCandidate(
+            long jobId,
+            long userId,
+            long knowledgeId,
+            Long sourceQuestionVersionId,
+            String lastWrongAnswerJson) {
+        SourceContext source = loadSourceContext(knowledgeId, sourceQuestionVersionId);
+        if (source == null) {
+            return new VariantCandidate(null, null, null, null, "AI_NO_SOURCE_QUESTION");
+        }
+
+        List<String> existingStems = new ArrayList<>(loadAllActiveStems(knowledgeId, source.versionId()));
+        String sourceStem = extractStem(source.questionJson());
+        if (!sourceStem.isBlank() && !existingStems.contains(sourceStem)) {
+            existingStems.add(0, sourceStem);
+        }
+        String existingPreview = formatExistingStems(existingStems);
+
+        String materialsBlock = "无";
+        if (materialSearch != null) {
+            try {
+                List<MaterialSearchPort.MaterialChunkHit> hits = materialSearch.search(knowledgeId, sourceStem);
+                if (hits != null && !hits.isEmpty()) {
+                    StringBuilder mb = new StringBuilder();
+                    int idx = 1;
+                    for (MaterialSearchPort.MaterialChunkHit hit : hits) {
+                        mb.append("[c").append(idx++).append("] ")
+                                .append(hit.title() == null ? "" : hit.title())
+                                .append("：")
+                                .append(hit.text() == null ? "" : hit.text())
+                                .append("\n");
+                    }
+                    materialsBlock = mb.toString();
+                }
+            } catch (Exception ex) {
+                log.warn("Material search failed for variant job={}", jobId, ex);
+            }
+        }
+
+        LlmUsage totalUsage = new LlmUsage(0, 0, 0, 0);
+        String lastError = null;
+        AiOutputValidator.ParsedQuestion accepted = null;
+        String relationToSource = "";
+        String difficultyNote = "";
+
+        int maxCalls = 2;
+        for (int call = 0; call < maxCalls && accepted == null; call++) {
+            if (!quotaService.tryConsume(userId, AiQuotaService.Bucket.GENERATED_OR_REVIEWED)) {
+                lastError = "AI_QUOTA_EXCEEDED";
+                break;
+            }
+            String userPrompt = prompts.wrongVariant(
+                    source.type(),
+                    knowledgeId,
+                    source.knowledgeName(),
+                    source.maxScore(),
+                    source.questionJson(),
+                    lastWrongAnswerJson,
+                    materialsBlock,
+                    existingPreview);
+            LlmResponse response;
+            try {
+                response = llmClient.complete(
+                        new LlmRequest(userPrompt, true),
+                        Duration.ofMillis(Math.max(1000L, properties.getTimeoutMs())));
+            } catch (AiUnavailableException ex) {
+                lastError = mapErrorCode(ex.getFailure());
+                log.warn("Variant generation job={} failed: {}", jobId, lastError);
+                break;
+            }
+            totalUsage = mergeUsage(totalUsage, response.usage());
+
+            AiOutputValidator.ValidationBatch batch = validator.validateQuestions(
+                    response.content(),
+                    1,
+                    knowledgeId,
+                    existingStems);
+            if (!batch.accepted().isEmpty()) {
+                accepted = batch.accepted().get(0);
+                String[] notes = extractVariantNotes(response.content());
+                relationToSource = notes[0];
+                difficultyNote = notes[1];
+                break;
+            }
+            if (batch.duplicateCount() == 0) {
+                lastError = "AI_REJECTED";
+                break;
+            }
+            if (call == maxCalls - 1) {
+                lastError = "AI_REJECTED";
+            }
+        }
+
+        if (accepted == null) {
+            return new VariantCandidate(
+                    null,
+                    null,
+                    null,
+                    totalUsage.toJson(json),
+                    lastError == null ? "AI_REJECTED" : lastError);
+        }
+        return new VariantCandidate(
+                accepted,
+                relationToSource,
+                difficultyNote,
+                totalUsage.toJson(json),
+                null);
+    }
+
+    public GeneratedQuestion persistQuestion(
             long jobId,
             long originQuestionVersionId,
             AiOutputValidator.ParsedQuestion pq) {
+        return persistQuestion(jobId, originQuestionVersionId, pq, "QUESTION_GENERATION");
+    }
+
+    public GeneratedQuestion persistQuestion(
+            long jobId,
+            long originQuestionVersionId,
+            AiOutputValidator.ParsedQuestion pq,
+            String scenario) {
         Long seq = db.queryForObject("SELECT nextval('rs_question_no_seq')", Long.class);
         String questionNo = "DS-%06d".formatted(seq);
         Long questionId = Objects.requireNonNull(db.queryForObject(
@@ -188,7 +334,7 @@ public class QuestionGenerationService {
             contentCopy.remove("explanation");
         }
         String rubricStr = pq.rubric() == null || pq.rubric().isNull() ? null : writeJson(pq.rubric());
-        String sourceRef = "AI:" + properties.getModel() + ":" + PromptTemplates.TEMPLATE_VERSION;
+        String sourceRef = "AI:" + properties.getModel() + ":" + PromptTemplates.versionFor(scenario);
         if (sourceRef.length() > 500) {
             sourceRef = sourceRef.substring(0, 500);
         }
@@ -209,6 +355,47 @@ public class QuestionGenerationService {
 
         db.update("UPDATE rs_question SET current_version_id=? WHERE id=?", versionId, questionId);
         return new GeneratedQuestion(questionId, versionId, pq.knowledgePointId(), pq.type(), pq.maxScore());
+    }
+
+    private List<String> loadAllActiveStems(long knowledgeId, long sourceVersionId) {
+        List<String> stems = new ArrayList<>(db.query(
+                "SELECT v.content_json->>'stem' FROM rs_question q JOIN rs_question_version v ON v.id=q.current_version_id "
+                        + "WHERE q.subject_id=1 AND (q.status='ACTIVE' OR v.id=?) "
+                        + "ORDER BY CASE WHEN v.knowledge_point_id=? THEN 0 ELSE 1 END, q.id",
+                (r, n) -> r.getString(1) == null ? "" : r.getString(1),
+                sourceVersionId,
+                knowledgeId));
+        return stems;
+    }
+
+    private String extractStem(String questionJson) {
+        try {
+            JsonNode node = json.readTree(questionJson);
+            return node.path("content").path("stem").asText("");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private String[] extractVariantNotes(String rawContent) {
+        try {
+            JsonNode root = json.readTree(AiOutputValidator.stripCodeFences(rawContent));
+            JsonNode first = null;
+            if (root.isObject() && root.has("questions") && root.get("questions").isArray() && !root.get("questions").isEmpty()) {
+                first = root.get("questions").get(0);
+            } else if (root.isArray() && !root.isEmpty()) {
+                first = root.get(0);
+            } else if (root.isObject()) {
+                first = root;
+            }
+            if (first != null && first.isObject()) {
+                String rel = AiOutputSanitizer.sanitize(first.path("relationToSource").asText(root.path("relationToSource").asText("")));
+                String diff = AiOutputSanitizer.sanitize(first.path("difficultyNote").asText(root.path("difficultyNote").asText("")));
+                return new String[]{rel, diff};
+            }
+        } catch (Exception ignored) {
+        }
+        return new String[]{"", ""};
     }
 
     private SourceContext loadSourceContext(long knowledgeId, Long preferredVersionId) {

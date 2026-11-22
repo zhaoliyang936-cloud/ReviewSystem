@@ -1,5 +1,6 @@
 package cn.reviewsystem.ai;
 
+import cn.reviewsystem.practice.PracticeMixConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +11,7 @@ import java.time.Instant;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -23,6 +25,8 @@ public class AiJobWorker {
     private final ObjectMapper json;
     private final AiJobService jobService;
     private final QuestionGenerationService questionGenerator;
+    private final TutoringService tutoringService;
+    private final PracticeMixConfig mixConfig;
     private final TransactionTemplate tx;
 
     public AiJobWorker(
@@ -31,10 +35,24 @@ public class AiJobWorker {
             AiJobService jobService,
             QuestionGenerationService questionGenerator,
             PlatformTransactionManager txManager) {
+        this(db, json, jobService, questionGenerator, null, null, txManager);
+    }
+
+    @Autowired
+    public AiJobWorker(
+            JdbcTemplate db,
+            ObjectMapper json,
+            AiJobService jobService,
+            QuestionGenerationService questionGenerator,
+            @Autowired(required = false) TutoringService tutoringService,
+            @Autowired(required = false) PracticeMixConfig mixConfig,
+            PlatformTransactionManager txManager) {
         this.db = db;
         this.json = json;
         this.jobService = jobService;
         this.questionGenerator = questionGenerator;
+        this.tutoringService = tutoringService;
+        this.mixConfig = mixConfig;
         this.tx = new TransactionTemplate(txManager);
     }
 
@@ -49,18 +67,19 @@ public class AiJobWorker {
     public boolean processNext() {
         QueuedJob job = tx.execute(status -> {
             var rows = db.query(
-                    "SELECT id, user_id, snapshot_refs_json::text, source_question_version_id, knowledge_id, deadline_at "
+                    "SELECT id, user_id, scenario, snapshot_refs_json::text, source_question_version_id, knowledge_id, deadline_at "
                             + "FROM rs_ai_job "
-                            + "WHERE state='QUEUED' AND scenario='QUESTION_GENERATION' "
+                            + "WHERE state='QUEUED' AND scenario IN ('QUESTION_GENERATION','WRONG_VARIANT','GUIDANCE','EXPLANATION') "
                             + "ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED",
                     (r, n) -> {
-                        Timestamp ts = r.getTimestamp(6);
+                        Timestamp ts = r.getTimestamp(7);
                         return new QueuedJob(
                                 r.getLong(1),
                                 r.getLong(2),
                                 r.getString(3),
-                                r.getObject(4, Long.class),
+                                r.getString(4),
                                 r.getObject(5, Long.class),
+                                r.getObject(6, Long.class),
                                 ts == null ? null : ts.toInstant());
                     });
             if (rows.isEmpty()) {
@@ -73,6 +92,24 @@ public class AiJobWorker {
 
         if (job == null) {
             return false;
+        }
+
+        if ("WRONG_VARIANT".equals(job.scenario())) {
+            processVariant(job);
+            return true;
+        }
+        if ("GUIDANCE".equals(job.scenario()) || "EXPLANATION".equals(job.scenario())) {
+            try {
+                if (tutoringService != null) {
+                    tutoringService.processQueuedJob(job.id());
+                } else {
+                    jobService.fail(job.id(), "AI_WORKER_ERROR");
+                }
+            } catch (RuntimeException ex) {
+                log.error("Unexpected error in Tutoring job={}", job.id(), ex);
+                jobService.fail(job.id(), "AI_WORKER_ERROR");
+            }
+            return true;
         }
 
         try {
@@ -109,6 +146,123 @@ public class AiJobWorker {
             });
             return true;
         }
+    }
+
+    private void processVariant(QueuedJob job) {
+        try {
+            if (job.deadlineAt() != null && job.deadlineAt().isBefore(Instant.now())) {
+                jobService.expire(job.id(), "AI_TIMEOUT");
+                return;
+            }
+            JsonNode refs = readTree(job.snapshotRefsJson());
+            long wrongQuestionId = refs.path("wrongQuestionId").asLong(0);
+            long knowledgeId = job.knowledgeId() != null ? job.knowledgeId() : refs.path("knowledgeId").asLong(0);
+            long sourceVersionId = job.sourceQuestionVersionId() != null
+                    ? job.sourceQuestionVersionId()
+                    : refs.path("questionVersionId").asLong(0);
+            String idempotencyKey = refs.path("idempotencyKey").asText("");
+
+            var wqRows = db.query(
+                    """
+                    SELECT wq.id, la.answer_json::text
+                    FROM rs_wrong_question wq
+                    LEFT JOIN rs_wrong_attempt la ON la.id = wq.latest_attempt_id
+                    WHERE wq.id = ? AND wq.user_id = ?
+                    """,
+                    (r, n) -> r.getString(2),
+                    wrongQuestionId, job.userId());
+            if (wqRows.isEmpty()) {
+                jobService.expire(job.id(), "WRONG_QUESTION_GONE");
+                return;
+            }
+            String lastWrongAnswer = wqRows.get(0) == null ? "{}" : wqRows.get(0);
+
+            QuestionGenerationService.VariantCandidate candidate = questionGenerator.generateVariantCandidate(
+                    job.id(),
+                    job.userId(),
+                    knowledgeId,
+                    sourceVersionId,
+                    lastWrongAnswer);
+            if (candidate.question() == null) {
+                jobService.fail(job.id(), candidate.errorCode() == null ? "AI_REJECTED" : candidate.errorCode());
+                return;
+            }
+
+            tx.executeWithoutResult(status -> {
+                Long wqExists = db.queryForObject(
+                        "SELECT count(*) FROM rs_wrong_question WHERE id = ? AND user_id = ?",
+                        Long.class, wrongQuestionId, job.userId());
+                if (wqExists == null || wqExists == 0) {
+                    jobService.expire(job.id(), "WRONG_QUESTION_GONE");
+                    return;
+                }
+
+                var activityIds = db.query(
+                        "INSERT INTO rs_learning_activity(user_id, subject_id, kind, status) "
+                                + "VALUES (?, 1, 'PRACTICE', 'READY') "
+                                + "ON CONFLICT (user_id, subject_id) WHERE status IN ('PREPARING','READY','IN_PROGRESS','GRADING') DO NOTHING "
+                                + "RETURNING id",
+                        (r, n) -> r.getLong(1),
+                        job.userId());
+                if (activityIds.isEmpty()) {
+                    jobService.expire(job.id(), "ACTIVITY_CONFLICT");
+                    return;
+                }
+                long activityId = activityIds.get(0);
+
+                QuestionGenerationService.GeneratedQuestion gq = questionGenerator.persistQuestion(
+                        job.id(), sourceVersionId, candidate.question(), "WRONG_VARIANT");
+
+                ObjectNode ratio = buildVariantMixRatio();
+                Long practiceId = Objects.requireNonNull(db.queryForObject(
+                        "INSERT INTO rs_practice(activity_id, user_id, subject_id, question_count, mix_ratio_json, request_key, attempt_type, variant_wrong_question_id) "
+                                + "VALUES (?, ?, 1, 1, CAST(? AS jsonb), ?, 'AI_VARIANT', ?) RETURNING id",
+                        Long.class,
+                        activityId, job.userId(), writeJson(ratio), idempotencyKey, wrongQuestionId));
+
+                db.update(
+                        "INSERT INTO rs_practice_item(practice_id, question_id, question_version_id, knowledge_id, question_type, max_score, position) "
+                                + "VALUES (?, ?, ?, ?, ?, ?, 0)",
+                        practiceId, gq.questionId(), gq.versionId(), gq.knowledgeId(), gq.type(), gq.maxScore());
+
+                db.update("INSERT INTO rs_student_course_guard(user_id, subject_id) VALUES (?, 1) ON CONFLICT DO NOTHING", job.userId());
+                db.update("UPDATE rs_student_course_guard SET tutoring_epoch = tutoring_epoch + 1 WHERE user_id = ? AND subject_id = 1", job.userId());
+
+                ObjectNode output = json.createObjectNode();
+                output.put("questionId", gq.questionId());
+                output.put("questionVersionId", gq.versionId());
+                output.put("practiceId", practiceId);
+                output.put("originWrongQuestionId", wrongQuestionId);
+                output.put("relationToSource", candidate.relationToSource() == null ? "" : candidate.relationToSource());
+                output.put("difficultyNote", candidate.difficultyNote() == null ? "" : candidate.difficultyNote());
+                jobService.succeed(job.id(), output, candidate.usageJson());
+            });
+        } catch (RuntimeException ex) {
+            log.error("Unexpected error in processVariant for job={}", job.id(), ex);
+            jobService.fail(job.id(), "AI_WORKER_ERROR");
+        }
+    }
+
+    private ObjectNode buildVariantMixRatio() {
+        String version = mixConfig != null ? mixConfig.version() : "v3";
+        double bank = mixConfig != null ? mixConfig.bank() : 0.7;
+        double ai = mixConfig != null ? mixConfig.ai() : 0.3;
+        ObjectNode ratio = json.createObjectNode();
+        ratio.put("version", version);
+        ObjectNode configured = ratio.putObject("ratio");
+        configured.put("bank", bank);
+        configured.put("ai", ai);
+        ObjectNode planned = ratio.putObject("planned");
+        planned.put("bank", 0);
+        planned.put("ai", 1);
+        ObjectNode target = ratio.putObject("target");
+        target.put("bank", 0);
+        target.put("ai", 1);
+        ObjectNode actual = ratio.putObject("actual");
+        actual.put("bank", 0);
+        actual.put("ai", 1);
+        ratio.putArray("degraded");
+        return ratio;
     }
 
     private void finalizeJob(
@@ -350,6 +504,7 @@ public class AiJobWorker {
     private record QueuedJob(
             long id,
             long userId,
+            String scenario,
             String snapshotRefsJson,
             Long sourceQuestionVersionId,
             Long knowledgeId,

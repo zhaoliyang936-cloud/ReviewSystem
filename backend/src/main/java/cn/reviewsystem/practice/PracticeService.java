@@ -216,6 +216,9 @@ public class PracticeService {
                     practiceId, c.questionId(), c.versionId(), c.knowledgeId(), c.type(), c.maxScore(), i);
         }
 
+        db.update("INSERT INTO rs_student_course_guard(user_id,subject_id) VALUES (?,1) ON CONFLICT DO NOTHING", userId);
+        db.update("UPDATE rs_student_course_guard SET tutoring_epoch=tutoring_epoch+1 WHERE user_id=? AND subject_id=1", userId);
+
         if (preparing) {
             ObjectNode refs = json.createObjectNode();
             refs.put("kind", "PRACTICE");
@@ -295,6 +298,8 @@ public class PracticeService {
         ratio.putArray("degraded");
         Long practiceId = db.queryForObject("INSERT INTO rs_practice(activity_id,user_id,subject_id,question_count,mix_ratio_json,request_key,attempt_type,redo_wrong_question_id) VALUES (?,?,1,1,CAST(? AS jsonb),?,'ORIGINAL_REDO',?) RETURNING id", Long.class, activityId, userId, write(ratio), idempotencyKey, wrongQuestionId);
         db.update("INSERT INTO rs_practice_item(practice_id,question_id,question_version_id,knowledge_id,question_type,max_score,position) VALUES (?,?,?,?,?,?,0)", practiceId, questionId, versionId, knowledgeId, type, maxScore);
+        db.update("INSERT INTO rs_student_course_guard(user_id,subject_id) VALUES (?,1) ON CONFLICT DO NOTHING", userId);
+        db.update("UPDATE rs_student_course_guard SET tutoring_epoch=tutoring_epoch+1 WHERE user_id=? AND subject_id=1", userId);
         return detail(userId, Objects.requireNonNull(practiceId), null, 1);
     }
 
@@ -321,7 +326,9 @@ public class PracticeService {
                 requestedCount == null ? practice.questionCount() : requestedCount,
                 prepTimeout,
                 read(practice.mixRatio()),
-                items);
+                items,
+                practice.attemptType(),
+                practice.variantWrongQuestionId() == null ? null : String.valueOf(practice.variantWrongQuestionId()));
     }
 
     public Map<String, Object> preparationStatus(long userId, long jobId) {
@@ -421,8 +428,12 @@ public class PracticeService {
                 }
             }
         }
-        String attemptType = "ORIGINAL_REDO".equals(row.attemptType()) ? "ORIGINAL_REDO" : "ORDINARY";
-        Long linkedWrongQuestionId = "ORIGINAL_REDO".equals(attemptType) ? row.redoWrongQuestionId() : null;
+        String attemptType = "ORIGINAL_REDO".equals(row.attemptType())
+                ? "ORIGINAL_REDO"
+                : "AI_VARIANT".equals(row.attemptType()) ? "AI_VARIANT" : "ORDINARY";
+        Long linkedWrongQuestionId = "ORIGINAL_REDO".equals(attemptType)
+                ? row.redoWrongQuestionId()
+                : "AI_VARIANT".equals(attemptType) ? row.variantWrongQuestionId() : null;
         var items = db.query(
                 "SELECT pi.id,pi.question_id,pi.question_version_id,v.knowledge_point_id,pi.question_type,pi.max_score,v.answer_json::text,v.rubric_json::text,v.content_json->>'stem' "
                         + "FROM rs_practice_item pi JOIN rs_question_version v ON v.id=pi.question_version_id WHERE pi.practice_id=? ORDER BY pi.position",
@@ -484,8 +495,12 @@ public class PracticeService {
         JsonNode passedNode = grade.result().get("passed");
         Boolean passed = passedNode != null && passedNode.isBoolean() ? passedNode.asBoolean() : null;
         if (passed != null) {
-            String attemptType = "ORIGINAL_REDO".equals(row.attemptType()) ? "ORIGINAL_REDO" : "ORDINARY";
-            Long linkedWrongQuestionId = "ORIGINAL_REDO".equals(attemptType) ? row.redoWrongQuestionId() : null;
+            String attemptType = "ORIGINAL_REDO".equals(row.attemptType())
+                    ? "ORIGINAL_REDO"
+                    : "AI_VARIANT".equals(row.attemptType()) ? "AI_VARIANT" : "ORDINARY";
+            Long linkedWrongQuestionId = "ORIGINAL_REDO".equals(attemptType)
+                    ? row.redoWrongQuestionId()
+                    : "AI_VARIANT".equals(attemptType) ? row.variantWrongQuestionId() : null;
             wrongQuestions.record(userId, WrongQuestionRecorder.Source.PRACTICE, practiceId, item.id(), null, item.questionId(), item.versionId(), item.knowledgeId(), item.type(), passed, answer, grade.result(), attemptType, linkedWrongQuestionId);
             Integer maxRev = db.queryForObject("SELECT COALESCE(MAX(source_revision), 0) FROM rs_change_event WHERE event_type='PRACTICE_SUBMITTED' AND source_id=?", Integer.class, practiceId);
             int nextRev = (maxRev == null ? 0 : maxRev) + 1;
@@ -500,11 +515,12 @@ public class PracticeService {
         if (!row.status().equals("COMPLETED")) {
             conflict("Practice result is available only after completion");
         }
-        var items = db.query("SELECT pi.id,pi.position,pi.question_type,pi.max_score,pi.final_answer_json::text,pi.result_json::text,v.content_json::text,v.answer_json::text,v.rubric_json::text FROM rs_practice_item pi JOIN rs_question_version v ON v.id=pi.question_version_id WHERE pi.practice_id=? ORDER BY pi.position", (r, n) -> {
+        var items = db.query("SELECT pi.id,pi.position,pi.question_type,pi.max_score,pi.final_answer_json::text,pi.result_json::text,v.content_json::text,v.answer_json::text,v.rubric_json::text,wq.id FROM rs_practice_item pi JOIN rs_question_version v ON v.id=pi.question_version_id LEFT JOIN rs_wrong_question wq ON wq.user_id=? AND wq.question_id=pi.question_id WHERE pi.practice_id=? ORDER BY pi.position", (r, n) -> {
             JsonNode stored = read(r.getString(7));
             String explanation = stored.path("explanation").isTextual() ? stored.path("explanation").asText() : "";
-            return new PracticeDtos.ResultItem(String.valueOf(r.getLong(1)), r.getInt(2), r.getString(3), r.getDouble(4), publicContent(stored), readNullable(r.getString(5)), read(r.getString(8)), readNullable(r.getString(9)), explanation, readNullable(r.getString(6)), submittedAssets(userId, r.getLong(1)));
-        }, practiceId);
+            Long wqId = r.getObject(10, Long.class);
+            return new PracticeDtos.ResultItem(String.valueOf(r.getLong(1)), r.getInt(2), r.getString(3), r.getDouble(4), publicContent(stored), readNullable(r.getString(5)), read(r.getString(8)), readNullable(r.getString(9)), explanation, readNullable(r.getString(6)), submittedAssets(userId, r.getLong(1)), wqId == null ? null : String.valueOf(wqId));
+        }, userId, practiceId);
         return new PracticeDtos.ResultView(String.valueOf(row.id()), String.valueOf(row.activityId()), row.status(), row.submittedAt(), items);
     }
 
@@ -519,7 +535,7 @@ public class PracticeService {
     }
 
     private PracticeRow practice(long userId, long id, boolean lock) {
-        var rows = db.query("SELECT p.id,p.activity_id,a.status,p.question_count,p.mix_ratio_json::text,p.submit_key,p.submit_hash,p.submitted_at,p.attempt_type,p.redo_wrong_question_id FROM rs_practice p JOIN rs_learning_activity a ON a.id=p.activity_id WHERE p.id=? AND p.user_id=?" + (lock ? " FOR UPDATE" : ""), (r, n) -> new PracticeRow(r.getLong(1), r.getLong(2), r.getString(3), r.getInt(4), r.getString(5), r.getString(6), r.getString(7), r.getObject(8, OffsetDateTime.class), r.getString(9), r.getObject(10, Long.class)), id, userId);
+        var rows = db.query("SELECT p.id,p.activity_id,a.status,p.question_count,p.mix_ratio_json::text,p.submit_key,p.submit_hash,p.submitted_at,p.attempt_type,p.redo_wrong_question_id,p.variant_wrong_question_id FROM rs_practice p JOIN rs_learning_activity a ON a.id=p.activity_id WHERE p.id=? AND p.user_id=?" + (lock ? " FOR UPDATE" : ""), (r, n) -> new PracticeRow(r.getLong(1), r.getLong(2), r.getString(3), r.getInt(4), r.getString(5), r.getString(6), r.getString(7), r.getObject(8, OffsetDateTime.class), r.getString(9), r.getObject(10, Long.class), r.getObject(11, Long.class)), id, userId);
         if (rows.isEmpty()) notFound();
         return rows.get(0);
     }
@@ -562,7 +578,7 @@ public class PracticeService {
     }
 
     private List<Candidate> candidates(long kp) {
-        var rows = db.query("SELECT q.id,v.id,v.knowledge_point_id,v.type,v.max_score,v.content_json::text,v.answer_json::text,v.rubric_json::text,v.source_ref FROM rs_question q JOIN rs_question_version v ON v.id=q.current_version_id WHERE q.subject_id=1 AND q.status='ACTIVE' AND v.knowledge_point_id=? ORDER BY q.id", (r, n) -> new Candidate(r.getLong(1), r.getLong(2), r.getLong(3), r.getString(4), r.getDouble(5), r.getString(6), r.getString(7), r.getString(8), r.getString(9)), kp);
+        var rows = db.query("SELECT q.id,v.id,v.knowledge_point_id,v.type,v.max_score,v.content_json::text,v.answer_json::text,v.rubric_json::text,v.source_ref FROM rs_question q JOIN rs_question_version v ON v.id=q.current_version_id WHERE q.subject_id=1 AND q.status='ACTIVE' AND NOT EXISTS (SELECT 1 FROM rs_question_review_case rc WHERE rc.question_id = q.id AND rc.status = 'OPEN') AND v.knowledge_point_id=? ORDER BY q.id", (r, n) -> new Candidate(r.getLong(1), r.getLong(2), r.getLong(3), r.getString(4), r.getDouble(5), r.getString(6), r.getString(7), r.getString(8), r.getString(9)), kp);
         return rows.stream().filter(this::valid).toList();
     }
 
@@ -656,7 +672,7 @@ public class PracticeService {
         throw new BusinessException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Practice not found");
     }
 
-    record PracticeRow(long id, long activityId, String status, int questionCount, String mixRatio, String submitKey, String submitHash, OffsetDateTime submittedAt, String attemptType, Long redoWrongQuestionId) {}
+    record PracticeRow(long id, long activityId, String status, int questionCount, String mixRatio, String submitKey, String submitHash, OffsetDateTime submittedAt, String attemptType, Long redoWrongQuestionId, Long variantWrongQuestionId) {}
     record Candidate(long questionId, long versionId, long knowledgeId, String type, double maxScore, String content, String answer, String rubric, String sourceRef) {}
     record GradeItem(long id, long questionId, long versionId, long knowledgeId, String type, double maxScore, String correctAnswer, String rubric, String stem) {}
 

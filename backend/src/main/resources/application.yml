@@ -47,3 +47,8 @@ app:
     temperature: ${AI_TEMPERATURE:0.7}
     max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:4096}
     json-mode: ${AI_JSON_MODE:auto}
+    quota:
+      generation-daily: ${AI_QUOTA_GENERATION_DAILY:50}
+      review-daily: ${AI_QUOTA_REVIEW_DAILY:50}
+      mastery-daily: ${AI_QUOTA_MASTERY_DAILY:30}
+      tutoring-daily: ${AI_QUOTA_TUTORING_DAILY:20}

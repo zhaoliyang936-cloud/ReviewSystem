@@ -25,16 +25,20 @@ public class AiJobService {
     private final AiProperties properties;
     private final TransactionTemplate tx;
 
+    public AiJobService(JdbcTemplate db, ObjectMapper json, AiProperties properties) {
+        this(db, json, properties, null);
+    }
+
     @Autowired
     public AiJobService(
             JdbcTemplate db,
             ObjectMapper json,
             AiProperties properties,
-            PlatformTransactionManager txManager) {
+            @Autowired(required = false) PlatformTransactionManager txManager) {
         this.db = db;
         this.json = json;
         this.properties = properties;
-        this.tx = new TransactionTemplate(Objects.requireNonNull(txManager, "txManager"));
+        this.tx = txManager == null ? null : new TransactionTemplate(txManager);
     }
 
     public long createJob(
@@ -48,7 +52,37 @@ public class AiJobService {
             Long evidenceRevision,
             String state,
             OffsetDateTime deadlineAt) {
+        return createJob(
+                userId,
+                scenario,
+                contextHash,
+                activeKey,
+                snapshotRefs,
+                null,
+                sourceQuestionVersionId,
+                knowledgeId,
+                evidenceRevision,
+                null,
+                state,
+                deadlineAt);
+    }
+
+    public long createJob(
+            long userId,
+            String scenario,
+            String contextHash,
+            String activeKey,
+            JsonNode snapshotRefs,
+            JsonNode materialRefs,
+            Long sourceQuestionVersionId,
+            Long knowledgeId,
+            Long evidenceRevision,
+            Integer tutoringEpoch,
+            String state,
+            OffsetDateTime deadlineAt) {
         String snapshotJson = writeJson(snapshotRefs);
+        String materialJson = writeJson(materialRefs);
+        String templateVersion = PromptTemplates.versionFor(scenario);
         String modelVersion = properties.getModel() == null || properties.getModel().isBlank()
                 ? "unconfigured"
                 : truncate(properties.getModel(), 40);
@@ -64,14 +98,14 @@ public class AiJobService {
             }
             var inserted = db.query(
                     "INSERT INTO rs_ai_job(user_id, subject_id, scenario, context_hash, active_key, "
-                            + "snapshot_refs_json, source_question_version_id, knowledge_id, evidence_revision, "
-                            + "template_version, model_config_version, state, deadline_at) "
-                            + "VALUES (?, 1, ?, ?, ?, CAST(? AS jsonb), ?, ?, ?, ?, ?, ?, ?) "
+                            + "snapshot_refs_json, material_refs_json, source_question_version_id, knowledge_id, evidence_revision, "
+                            + "tutoring_epoch, template_version, model_config_version, state, deadline_at) "
+                            + "VALUES (?, 1, ?, ?, ?, CAST(? AS jsonb), CAST(? AS jsonb), ?, ?, ?, ?, ?, ?, ?, ?) "
                             + "ON CONFLICT (active_key) WHERE state IN ('QUEUED','RUNNING') DO NOTHING RETURNING id",
                     (r, n) -> r.getLong(1),
-                    userId, scenario, contextHash, activeKey, snapshotJson,
-                    sourceQuestionVersionId, knowledgeId, evidenceRevision,
-                    PromptTemplates.TEMPLATE_VERSION, modelVersion, state, deadlineTs);
+                    userId, scenario, contextHash, activeKey, snapshotJson, materialJson,
+                    sourceQuestionVersionId, knowledgeId, evidenceRevision, tutoringEpoch,
+                    templateVersion, modelVersion, state, deadlineTs);
             if (!inserted.isEmpty()) {
                 return inserted.get(0);
             }
@@ -82,13 +116,13 @@ public class AiJobService {
 
         return Objects.requireNonNull(db.queryForObject(
                 "INSERT INTO rs_ai_job(user_id, subject_id, scenario, context_hash, active_key, "
-                        + "snapshot_refs_json, source_question_version_id, knowledge_id, evidence_revision, "
-                        + "template_version, model_config_version, state, deadline_at) "
-                        + "VALUES (?, 1, ?, ?, NULL, CAST(? AS jsonb), ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                        + "snapshot_refs_json, material_refs_json, source_question_version_id, knowledge_id, evidence_revision, "
+                        + "tutoring_epoch, template_version, model_config_version, state, deadline_at) "
+                        + "VALUES (?, 1, ?, ?, NULL, CAST(? AS jsonb), CAST(? AS jsonb), ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
                 Long.class,
-                userId, scenario, contextHash, snapshotJson,
-                sourceQuestionVersionId, knowledgeId, evidenceRevision,
-                PromptTemplates.TEMPLATE_VERSION, modelVersion, state, deadlineTs));
+                userId, scenario, contextHash, snapshotJson, materialJson,
+                sourceQuestionVersionId, knowledgeId, evidenceRevision, tutoringEpoch,
+                templateVersion, modelVersion, state, deadlineTs));
     }
 
     public void markRunning(long jobId) {
@@ -132,7 +166,9 @@ public class AiJobService {
 
         int recovered = 0;
         for (long jobId : candidateIds) {
-            boolean ok = Boolean.TRUE.equals(tx.execute(status -> processOneStale(jobId, runningStaleSeconds)));
+            boolean ok = tx != null
+                    ? Boolean.TRUE.equals(tx.execute(status -> processOneStale(jobId, runningStaleSeconds)))
+                    : processOneStale(jobId, runningStaleSeconds);
             if (ok) {
                 recovered++;
             }
@@ -141,7 +177,6 @@ public class AiJobService {
     }
 
     private boolean processOneStale(long jobId, int runningStaleSeconds) {
-        // 1. Ordinary read without locking rs_ai_job first
         var rows = db.query(
                 "SELECT state, snapshot_refs_json::text FROM rs_ai_job "
                         + "WHERE id=? "
@@ -156,13 +191,11 @@ public class AiJobService {
         String snapshotRefsJson = rows.get(0)[1];
         String reasonCode = "QUEUED".equals(state) ? "AI_TIMEOUT" : "AI_WORKER_STALE";
 
-        // 2. Lock rs_learning_activity FIRST (activity -> job lock order)
         long activityId = extractActivityId(snapshotRefsJson);
         if (activityId > 0) {
             db.query("SELECT status FROM rs_learning_activity WHERE id=? FOR UPDATE", (r, n) -> r.getString(1), activityId);
         }
 
-        // 3. Lock/Update rs_ai_job SECOND
         int updated = db.update(
                 "UPDATE rs_ai_job SET state='EXPIRED', error_code=?, updated_at=CURRENT_TIMESTAMP "
                         + "WHERE id=? AND state IN ('QUEUED','RUNNING')",
@@ -172,7 +205,6 @@ public class AiJobService {
             return false;
         }
 
-        // 4. Update activity and practice/task within the same transaction
         markActivityPreparationFailed(snapshotRefsJson, reasonCode);
         return true;
     }

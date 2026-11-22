@@ -11,6 +11,7 @@ import MaterialListPage from './admin/MaterialListPage.vue'
 import MaterialEditorPage from './admin/MaterialEditorPage.vue'
 import MaterialSearchCheckPage from './admin/MaterialSearchCheckPage.vue'
 import CoveragePage from './admin/CoveragePage.vue'
+import ReviewCaseListPage from './admin/ReviewCaseListPage.vue'
 import PracticeNewPage from './practice/PracticeNewPage.vue'
 import PracticePage from './practice/PracticePage.vue'
 import PracticeResultPage from './practice/PracticeResultPage.vue'
@@ -45,7 +46,8 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: 'materials/new', component: MaterialEditorPage },
   { path: 'materials/search', component: MaterialSearchCheckPage },
   { path: 'materials/:id', component: MaterialEditorPage },
-  { path: 'coverage', component: CoveragePage }
+  { path: 'coverage', component: CoveragePage },
+  { path: 'review-cases', component: ReviewCaseListPage }
  ]}
 ] })
 createApp(App).use(createPinia()).use(router).mount('#app')

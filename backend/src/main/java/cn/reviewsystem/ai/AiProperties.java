@@ -25,6 +25,23 @@ public class AiProperties {
     private double temperature = 0.7;
     private int maxOutputTokens = 4096;
     private String jsonMode = "auto";
+    private Quota quota = new Quota();
+
+    public static class Quota {
+        private int generationDaily = 50;
+        private int reviewDaily = 50;
+        private int masteryDaily = 30;
+        private int tutoringDaily = 20;
+
+        public int getGenerationDaily() { return generationDaily; }
+        public void setGenerationDaily(int generationDaily) { this.generationDaily = generationDaily; }
+        public int getReviewDaily() { return reviewDaily; }
+        public void setReviewDaily(int reviewDaily) { this.reviewDaily = reviewDaily; }
+        public int getMasteryDaily() { return masteryDaily; }
+        public void setMasteryDaily(int masteryDaily) { this.masteryDaily = masteryDaily; }
+        public int getTutoringDaily() { return tutoringDaily; }
+        public void setTutoringDaily(int tutoringDaily) { this.tutoringDaily = tutoringDaily; }
+    }
 
     @PostConstruct
     public void validate() {
@@ -82,4 +99,6 @@ public class AiProperties {
     public void setMaxOutputTokens(int maxOutputTokens) { this.maxOutputTokens = maxOutputTokens; }
     public String getJsonMode() { return jsonMode; }
     public void setJsonMode(String jsonMode) { this.jsonMode = jsonMode; }
+    public Quota getQuota() { return quota; }
+    public void setQuota(Quota quota) { this.quota = quota; }
 }

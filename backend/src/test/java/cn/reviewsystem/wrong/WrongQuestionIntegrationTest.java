@@ -369,10 +369,12 @@ class WrongQuestionIntegrationTest {
         assertEquals("PENDING", db.queryForObject("SELECT status FROM rs_wrong_question WHERE id = ?",
                 String.class, wqId));
 
-        // Variant endpoint returns 501
+        // Variant endpoint returns 409 AI_UNAVAILABLE when AI is disabled
         mvc.perform(post("/api/wrong-questions/" + wqId + "/variant")
-                        .cookie(userCookie).with(csrf()))
-                .andExpect(status().isNotImplemented());
+                        .cookie(userCookie).with(csrf())
+                        .header("Idempotency-Key", UUID.randomUUID().toString()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AI_UNAVAILABLE"));
     }
 
     @Test

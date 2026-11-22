@@ -8,16 +8,35 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PromptTemplates {
-    public static final String TEMPLATE_VERSION = "M10A_V1";
-
     private final String questionGenerationTemplate;
     private final String subjectiveReviewTemplate;
     private final String masteryJudgementTemplate;
+    private final String wrongVariantTemplate;
+    private final String reviewGuidanceTemplate;
+    private final String errorExplanationTemplate;
 
     public PromptTemplates() {
         this.questionGenerationTemplate = load("prompts/question_generation.txt");
         this.subjectiveReviewTemplate = load("prompts/subjective_review.txt");
         this.masteryJudgementTemplate = load("prompts/mastery_judgement.txt");
+        this.wrongVariantTemplate = load("prompts/wrong_variant.txt");
+        this.reviewGuidanceTemplate = load("prompts/review_guidance.txt");
+        this.errorExplanationTemplate = load("prompts/error_explanation.txt");
+    }
+
+    public static String versionFor(String scenario) {
+        if (scenario == null) {
+            return "unknown-v1";
+        }
+        return switch (scenario) {
+            case "QUESTION_GENERATION" -> "question-generation-v1";
+            case "WRONG_VARIANT" -> "wrong-variant-v1";
+            case "GUIDANCE" -> "review-guidance-v1";
+            case "EXPLANATION" -> "error-explanation-v1";
+            case "SUBJECTIVE_REVIEW" -> "subjective-review-v1";
+            case "MASTERY_JUDGEMENT" -> "mastery-judgement-v1";
+            default -> "unknown-v1";
+        };
     }
 
     public String questionGeneration(
@@ -36,6 +55,52 @@ public class PromptTemplates {
                 "maxScore", String.valueOf(maxScore),
                 "sourceQuestionJson", safe(sourceQuestionJson),
                 "existingStems", safe(existingStems)));
+    }
+
+    public String wrongVariant(
+            String type,
+            long knowledgePointId,
+            String knowledgeName,
+            double maxScore,
+            String sourceQuestionJson,
+            String wrongAnswerJson,
+            String materialsText,
+            String existingStems) {
+        return render(wrongVariantTemplate, Map.of(
+                "type", safe(type),
+                "knowledgePointId", String.valueOf(knowledgePointId),
+                "knowledgeName", safe(knowledgeName),
+                "maxScore", String.valueOf(maxScore),
+                "sourceQuestionJson", safe(sourceQuestionJson),
+                "wrongAnswerJson", safe(wrongAnswerJson),
+                "materialsText", safe(materialsText),
+                "existingStems", safe(existingStems)));
+    }
+
+    public String reviewGuidance(
+            String ruleFacts,
+            String userQuery,
+            String materialsText,
+            String allowedCitationIds,
+            String modeInstruction) {
+        return render(reviewGuidanceTemplate, Map.of(
+                "ruleFacts", safe(ruleFacts),
+                "userQuery", safe(userQuery),
+                "materialsText", safe(materialsText),
+                "allowedCitationIds", safe(allowedCitationIds),
+                "modeInstruction", safe(modeInstruction)));
+    }
+
+    public String errorExplanation(
+            String questionSnapshot,
+            String wrongAnswer,
+            String materialsText,
+            String allowedCitationIds) {
+        return render(errorExplanationTemplate, Map.of(
+                "questionSnapshot", safe(questionSnapshot),
+                "wrongAnswer", safe(wrongAnswer),
+                "materialsText", safe(materialsText),
+                "allowedCitationIds", safe(allowedCitationIds)));
     }
 
     public String subjectiveReview(

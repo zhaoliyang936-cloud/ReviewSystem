@@ -107,6 +107,10 @@ public class AiOutputValidator {
                 reasons.add("MISSING_CONTENT_OR_ANSWER");
                 continue;
             }
+            contentNode = sanitizeJsonStrings(contentNode);
+            answerNode = sanitizeJsonStrings(answerNode);
+            rubricNode = rubricNode == null || rubricNode.isNull() ? null : sanitizeJsonStrings(rubricNode);
+            explanation = AiOutputSanitizer.sanitize(explanation);
 
             try {
                 questionValidator.validate(new QuestionWriteRequest(
@@ -127,6 +131,11 @@ public class AiOutputValidator {
             }
 
             String stem = contentNode.path("stem").asText("");
+            if (stem.contains("如下图所示") || stem.contains("如图所示") || stem.contains("见下图") || stem.contains("见附图")) {
+                invalidCount++;
+                reasons.add("GRAPHICS_NOT_SUPPORTED");
+                continue;
+            }
             Set<String> candidateGrams = trigrams(stem);
             boolean duplicate = false;
             for (Set<String> existing : existingGrams) {
@@ -189,13 +198,13 @@ public class AiOutputValidator {
             if (!entry.isTextual()) {
                 return null;
             }
-            missingPoints.add(entry.asText());
+            missingPoints.add(AiOutputSanitizer.sanitize(entry.asText()));
         }
         JsonNode reasonNode = root.get("reason");
         if (reasonNode == null || !reasonNode.isTextual()) {
             return null;
         }
-        String reason = reasonNode.asText();
+        String reason = AiOutputSanitizer.sanitize(reasonNode.asText());
         if (reason.length() > 2000) {
             return null;
         }
@@ -221,7 +230,7 @@ public class AiOutputValidator {
         if (score.compareTo(BigDecimal.ZERO) < 0 || score.compareTo(new BigDecimal("100")) > 0) {
             return null;
         }
-        String reason = root.path("reason").isTextual() ? root.path("reason").asText() : "";
+        String reason = root.path("reason").isTextual() ? AiOutputSanitizer.sanitize(root.path("reason").asText()) : "";
         if (reason.length() > 2000) {
             reason = reason.substring(0, 2000);
         }
@@ -230,6 +239,26 @@ public class AiOutputValidator {
         out.put("reason", reason);
         out.put("aiApplied", true);
         return out;
+    }
+
+    private JsonNode sanitizeJsonStrings(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return node;
+        }
+        if (node.isTextual()) {
+            return json.getNodeFactory().textNode(AiOutputSanitizer.sanitize(node.asText()));
+        }
+        if (node.isObject()) {
+            ObjectNode copy = json.createObjectNode();
+            node.fields().forEachRemaining(e -> copy.set(e.getKey(), sanitizeJsonStrings(e.getValue())));
+            return copy;
+        }
+        if (node.isArray()) {
+            ArrayNode copy = json.createArrayNode();
+            node.forEach(item -> copy.add(sanitizeJsonStrings(item)));
+            return copy;
+        }
+        return node;
     }
 
     /**
