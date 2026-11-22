@@ -164,6 +164,9 @@ class M10bTutoringVariantTest {
             db.update("DELETE FROM rs_wrong_attempt WHERE wrong_question_id IN (SELECT id FROM rs_wrong_question WHERE user_id = ?)", uid);
             db.update("UPDATE rs_practice SET redo_wrong_question_id=NULL, variant_wrong_question_id=NULL WHERE user_id = ?", uid);
             db.update("DELETE FROM rs_wrong_question WHERE user_id = ?", uid);
+            // 提交会留下 rs_change_event，必须先按 practice/task 清掉，否则后续测试的 processNext 会取到悬空事件
+            db.update("DELETE FROM rs_change_event WHERE source_id IN (SELECT id FROM rs_practice WHERE user_id = ?)", uid);
+            db.update("DELETE FROM rs_change_event WHERE source_id IN (SELECT id FROM rs_review_task WHERE user_id = ?)", uid);
             db.update("DELETE FROM rs_practice_item WHERE practice_id IN (SELECT id FROM rs_practice WHERE user_id = ?)", uid);
             db.update("DELETE FROM rs_practice WHERE user_id = ?", uid);
             db.update("DELETE FROM rs_learning_activity WHERE user_id = ?", uid);
