@@ -25,6 +25,21 @@ $JavaExe = "D:\DevTools\zulu21.54.109-ca-jdk21.0.13.0.3-win_x64\bin\java.exe"
 $JarPath = Join-Path $RepoRoot "backend\target\backend-0.1.0-SNAPSHOT.jar"
 $BaseUrl = "http://127.0.0.1:$Port"
 
+# 从仓库根 .env 补齐环境变量（只补未设置的），否则"有 key 却判成不可用"
+$EnvFile = Join-Path $RepoRoot ".env"
+$EnvLoaded = @()
+if (Test-Path $EnvFile) {
+    Get-Content $EnvFile | ForEach-Object {
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$') {
+            $k = $Matches[1]; $v = $Matches[2].Trim('"').Trim("'")
+            if (-not [Environment]::GetEnvironmentVariable($k)) {
+                [Environment]::SetEnvironmentVariable($k, $v, "Process")
+                $EnvLoaded += $k
+            }
+        }
+    }
+}
+
 $AiEnabled = [bool]$env:AI_API_KEY
 $Steps = New-Object System.Collections.Generic.List[object]
 $RunSw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -178,7 +193,7 @@ function Get-AnswerForQuestion {
 }
 
 $appProc = $null
-& "$PgBin\pg_ctl.exe" -D $PgData -l $PgLog -w -t 30 start
+& "$PgBin\pg_ctl.exe" -D $PgData -l $PgLog -w -t 300 start
 
 try {
     $env:DB_URL = "jdbc:postgresql://127.0.0.1:5432/$DbName"
@@ -189,7 +204,7 @@ try {
     $appArgs = @(
         "-jar", $JarPath,
         "--server.port=$Port",
-        "--app.ai.scheduler.enabled=false"
+        "--app.ai.scheduler.enabled=$(if ($AiEnabled) { 'true' } else { 'false' })"
     )
     $appProc = Start-Process -FilePath $JavaExe -ArgumentList $appArgs -WorkingDirectory $RepoRoot -RedirectStandardOutput $AppLog -RedirectStandardError $AppErrLog -PassThru
 
@@ -515,6 +530,8 @@ $skipped = @($Steps | Where-Object { $_.status -eq "skipped" }).Count
 $report = [ordered]@{
     database   = $DbName
     aiEnabled  = $AiEnabled
+    aiScheduler = $AiEnabled
+    envLoadedFromDotEnv = $EnvLoaded.Count -gt 0
     total      = $Steps.Count
     passed     = $passed
     failed     = $failed
