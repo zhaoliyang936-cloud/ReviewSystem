@@ -11,7 +11,8 @@
    - FILL：content.stem 中每个空用 {{blank}} 表示，answer 为 {"blanks":[{"accepted":["标准答案"]}]}
      （blanks 长度必须等于 {{blank}} 个数），rubric 为 null。
    - SHORT_ANSWER / ALGORITHM：content 为 {"stem":"题干"}，answer 为 {"referenceAnswer":"参考答案"}，
-     rubric 为 {"items":[{"point":"要点","score":分值}]}，各分项 score 之和必须精确等于 {{maxScore}}。
+     rubric 为 {"items":[{"criterion":"评分要点","score":分值}]}，各分项 score 之和必须精确等于 {{maxScore}}。
+     注意：评分要点的字段名必须是 criterion（不可写成 point/name/desc，写错会被直接拒绝）。
 5. 只输出合法的 JSON 对象，不要输出任何 markdown 代码块或额外文字。
 
 输出 JSON 格式（按 {{type}} 选择对应结构，示例给 CHOICE）：

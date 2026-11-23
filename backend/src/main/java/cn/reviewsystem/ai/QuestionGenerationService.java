@@ -135,6 +135,11 @@ public class QuestionGenerationService {
                     knowledgeId,
                     existingStems);
 
+            if (batch.accepted().isEmpty()) {
+                log.warn("Question generation job={} call={} rejected: duplicates={} invalid={} reasons={}",
+                        jobId, call, batch.duplicateCount(), batch.invalidCount(), batch.rejectionReasons());
+            }
+
             for (AiOutputValidator.ParsedQuestion pq : batch.accepted()) {
                 accepted.add(pq);
                 existingStems.add(pq.content().path("stem").asText(""));
@@ -269,6 +274,10 @@ public class QuestionGenerationService {
                     1,
                     knowledgeId,
                     existingStems);
+            if (batch.accepted().isEmpty()) {
+                log.warn("Variant generation job={} call={} rejected: duplicates={} invalid={} reasons={}",
+                        jobId, call, batch.duplicateCount(), batch.invalidCount(), batch.rejectionReasons());
+            }
             if (!batch.accepted().isEmpty()) {
                 accepted = batch.accepted().get(0);
                 String[] notes = extractVariantNotes(response.content());

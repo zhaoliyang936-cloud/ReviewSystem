@@ -399,7 +399,7 @@ class M10bTutoringVariantTest {
         MvcResult jobRes = mvc.perform(get("/api/review/ai/jobs/" + jobId).cookie(userA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.state").value("SUCCEEDED"))
-                .andExpect(jsonPath("$.templateVersion").value("wrong-variant-v2"))
+                .andExpect(jsonPath("$.templateVersion").value("wrong-variant-v3"))
                 .andReturn();
         JsonNode jobNode = json.readTree(jobRes.getResponse().getContentAsString());
         long practiceId = jobNode.get("output").get("practiceId").asLong();
