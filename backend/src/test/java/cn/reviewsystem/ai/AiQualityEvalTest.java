@@ -35,7 +35,7 @@ class AiQualityEvalTest {
         JsonNode cases = root.get("cases");
         JsonNode pairs = root.get("comparisonPairs");
 
-        assertThat(cases.size()).isEqualTo(48);
+        assertThat(cases.size()).isEqualTo(50);
         assertThat(pairs.size()).isEqualTo(2);
 
         Map<String, Integer> categoryCounts = new LinkedHashMap<>();
@@ -80,6 +80,8 @@ class AiQualityEvalTest {
                         withdrawnVer, withdrawnChunk, draftVer, draftChunk);
                 case "QUESTION_GENERATION" -> evaluateQuestionGenCase(
                         expected, mockResponse, kpId, input.path("sourceStem").asText(""));
+                case "WRONG_VARIANT" -> evaluateWrongVariantCase(
+                        expected, mockResponse, kpId, input.path("sourceStem").asText(""), input.path("type").asText("CHOICE"));
                 case "SUBJECTIVE_REVIEW" -> evaluateSubjectiveReviewCase(
                         expected, mockResponse, input.path("maxScore").asDouble(10.0));
                 case "MASTERY_JUDGEMENT" -> evaluateMasteryCase(
@@ -91,7 +93,7 @@ class AiQualityEvalTest {
                 passed++;
             }
         }
-        assertThat(passed).isEqualTo(48);
+        assertThat(passed).isEqualTo(50);
 
         // Verify 2 comparison pairs produce distinct steps for different student evidence
         Map<String, MaterialSearchPort.MaterialChunkHit> baseMap = Map.of(
@@ -238,6 +240,15 @@ class AiQualityEvalTest {
                     "SHORT_ANSWER".equals(input.path("type").asText()) ? 10.0 : 5.0,
                     "{\"stem\":\"" + input.path("sourceStem").asText("") + "\"}",
                     input.path("sourceStem").asText(""));
+            case "WRONG_VARIANT" -> prompts.wrongVariant(
+                    input.path("type").asText("CHOICE"),
+                    kpId,
+                    "线性表与栈",
+                    2.0,
+                    "{\"type\":\"" + input.path("type").asText("CHOICE") + "\",\"stem\":\"" + input.path("sourceStem").asText("") + "\"}",
+                    "{\"selectedOption\":\"B\"}",
+                    materialsText,
+                    input.path("sourceStem").asText(""));
             case "SUBJECTIVE_REVIEW" -> prompts.subjectiveReview(
                     input.path("maxScore").asDouble(10.0),
                     input.path("stem").asText(""),
@@ -263,9 +274,11 @@ class AiQualityEvalTest {
                 var res = citationValidator.validateAndSanitize(content, scenario, kpId, matMap);
                 yield res != null && !AiOutputSanitizer.hasBlockedContent(res.outputJson().toString());
             }
-            case "QUESTION_GENERATION" -> {
+            case "QUESTION_GENERATION", "WRONG_VARIANT" -> {
                 var batch = outputValidator.validateQuestions(content, 1, kpId, List.of(input.path("sourceStem").asText("")));
-                yield batch.accepted().size() == 1;
+                yield batch.accepted().size() == 1
+                        && (!"WRONG_VARIANT".equals(scenario)
+                                || input.path("type").asText("CHOICE").equals(batch.accepted().get(0).type()));
             }
             case "SUBJECTIVE_REVIEW" -> {
                 var eval = outputValidator.validateSubjectiveReview(content, input.path("maxScore").asDouble(10.0));
@@ -342,6 +355,19 @@ class AiQualityEvalTest {
             return batch.accepted().size() == 1;
         }
         return batch.accepted().isEmpty();
+    }
+
+    private boolean evaluateWrongVariantCase(String expected, String mockResponse, long kpId, String sourceStem, String expectedType) {
+        List<String> existing = sourceStem.isBlank() ? List.of() : List.of(sourceStem);
+        var batch = outputValidator.validateQuestions(mockResponse, 1, kpId, existing);
+        boolean goodAccepted = batch.accepted().size() == 1 && expectedType.equals(batch.accepted().get(0).type());
+        if ("VARIANT_SCHEMA_CONTRACT".equals(expected)) {
+            String missingOptionsJson = "{\"questions\":[{\"type\":\"CHOICE\",\"knowledgePointId\":" + kpId
+                    + ",\"maxScore\":2,\"content\":{\"stem\":\"变式缺失options数组测试\"},\"answer\":{\"correctOption\":\"A\"},\"rubric\":null,\"explanation\":\"bad\"}]}";
+            var rejectedBatch = outputValidator.validateQuestions(missingOptionsJson, 1, kpId, existing);
+            return goodAccepted && rejectedBatch.accepted().isEmpty();
+        }
+        return goodAccepted;
     }
 
     private boolean evaluateSubjectiveReviewCase(String expected, String mockResponse, double maxScore) {

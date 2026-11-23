@@ -652,6 +652,14 @@ try {
     $s16ok = ($drawnOk -ge 3 -and $gradedRight -and $gradedWrong)
     $sw.Stop()
     Add-StepResult -Step "16_b3_sample_new_questions" "Sample 5 new questions (id>=205) drawn & graded right/wrong" "drawn>=3, right=true, wrong=true" "drawn=$drawnOk/5,right=$gradedRight,wrong=$gradedWrong" -Status $(if($s16ok){"pass"}else{"fail"}) -Ms $sw.ElapsedMilliseconds
+
+    # F3: Archive closure DB before stopping postgres in finally
+    $BackupDir = Join-Path $RepoRoot ".workbuddy\backup"
+    New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
+    $DumpFile = Join-Path $BackupDir "rs_m11_closure_$ReportDate.dump"
+    $env:PGPASSWORD = "postgres"
+    & "$PgBin\pg_dump.exe" -h 127.0.0.1 -p 5432 -U postgres -Fc -d $DbName -f $DumpFile
+    Write-Host "CLOSURE DB DUMP: $DumpFile ($((Get-Item $DumpFile).Length) bytes)"
 }
 finally {
     if ($appProc -and -not $appProc.HasExited) {

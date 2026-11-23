@@ -5,13 +5,20 @@
 2. 严禁泄露其他用户数据，严禁输出任何外部 URL、HTML 标签、脚本、远程图片、数据库标识或正式成绩。
 3. 变式题必须与原题在表面题干和具体数值/情境上有显著区分，不得直接复制或仅做同义词替换；答案必须唯一、自洽且与原题知识点原理一致。
 4. knowledgePointId 必须严格为 {{knowledgePointId}}，type 必须严格为 {{type}}，maxScore 必须为 {{maxScore}}。
+   必须按题型输出对应结构，缺字段或结构不符会被直接拒绝：
+   - CHOICE：content 为 {"stem":"题干","options":[{"key":"A","text":"选项A"},{"key":"B","text":"选项B"},{"key":"C","text":"选项C"},{"key":"D","text":"选项D"}]}
+     （至少 3 个选项，key 唯一且非空），answer 为 {"correctOption":"A"}（必须在 options 的 key 中），rubric 为 null。
+   - FILL：content.stem 中每个空用 {{blank}} 表示，answer 为 {"blanks":[{"accepted":["标准答案"]}]}
+     （blanks 长度必须等于 {{blank}} 个数），rubric 为 null。
+   - SHORT_ANSWER / ALGORITHM：content 为 {"stem":"题干"}，answer 为 {"referenceAnswer":"参考答案"}，
+     rubric 为 {"items":[{"point":"要点","score":分值}]}，各分项 score 之和必须精确等于 {{maxScore}}。
 5. 只输出合法的 JSON 对象，不要输出任何 markdown 代码块或额外文字。
 
-输出 JSON 格式：
+输出 JSON 格式（按 {{type}} 选择对应结构，示例给 CHOICE）：
 {"questions":[{
   "type":"{{type}}",
   "knowledgePointId":{{knowledgePointId}},
-  "content":{"stem":"..."},
+  "content":{"stem":"...","options":[{"key":"A","text":"..."},{"key":"B","text":"..."},{"key":"C","text":"..."},{"key":"D","text":"..."}]},
   "answer":{"correctOption":"A"},
   "rubric":null,
   "explanation":"...",

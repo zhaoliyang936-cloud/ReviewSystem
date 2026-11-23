@@ -184,7 +184,9 @@ public class AiJobWorker {
                     sourceVersionId,
                     lastWrongAnswer);
             if (candidate.question() == null) {
-                jobService.fail(job.id(), candidate.errorCode() == null ? "AI_REJECTED" : candidate.errorCode());
+                String code = candidate.errorCode() == null ? "AI_REJECTED" : candidate.errorCode();
+                log.warn("AI job {} scenario=WRONG_VARIANT failed: {}", job.id(), code);
+                jobService.fail(job.id(), code);
                 return;
             }
 
@@ -298,6 +300,7 @@ public class AiJobWorker {
         } else if (!outcome.questions().isEmpty()) {
             jobService.succeed(job.id(), outcome.outputJson(), outcome.usageJson());
         } else {
+            log.warn("AI job {} scenario=QUESTION_GENERATION failed: {}", job.id(), degradeReason);
             jobService.fail(job.id(), degradeReason);
         }
     }
