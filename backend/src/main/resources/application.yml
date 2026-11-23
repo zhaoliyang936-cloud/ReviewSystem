@@ -52,3 +52,4 @@ app:
       review-daily: ${AI_QUOTA_REVIEW_DAILY:50}
       mastery-daily: ${AI_QUOTA_MASTERY_DAILY:30}
       tutoring-daily: ${AI_QUOTA_TUTORING_DAILY:20}
+    # app.ai.scheduler.enabled 默认为 true；测试环境可设为 false 以关闭后台 @Scheduled 调度器

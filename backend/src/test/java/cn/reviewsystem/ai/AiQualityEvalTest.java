@@ -109,6 +109,8 @@ class AiQualityEvalTest {
                 db.update("DELETE FROM rs_material_chunk WHERE material_version_id=?", verId);
                 db.update("DELETE FROM rs_material_version WHERE id=?", verId);
             }
+            db.update("DELETE FROM rs_ai_job WHERE knowledge_id IN (SELECT id FROM rs_knowledge_point WHERE code='KP-EVAL')");
+            db.update("DELETE FROM rs_ai_job WHERE knowledge_id IN (SELECT id FROM rs_knowledge_point WHERE code='KP-EVAL')");
             db.update("DELETE FROM rs_knowledge_point WHERE code='KP-EVAL'");
             db.update("DELETE FROM rs_chapter WHERE code='CH-EVAL'");
         }
@@ -181,6 +183,8 @@ class AiQualityEvalTest {
                 db.update("DELETE FROM rs_material_chunk WHERE material_version_id=?", verId);
                 db.update("DELETE FROM rs_material_version WHERE id=?", verId);
             }
+            db.update("DELETE FROM rs_ai_job WHERE knowledge_id IN (SELECT id FROM rs_knowledge_point WHERE code='KP-EVAL')");
+            db.update("DELETE FROM rs_ai_job WHERE knowledge_id IN (SELECT id FROM rs_knowledge_point WHERE code='KP-EVAL')");
             db.update("DELETE FROM rs_knowledge_point WHERE code='KP-EVAL'");
             db.update("DELETE FROM rs_chapter WHERE code='CH-EVAL'");
         }

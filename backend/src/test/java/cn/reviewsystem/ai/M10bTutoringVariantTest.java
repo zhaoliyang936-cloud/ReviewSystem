@@ -129,8 +129,8 @@ class M10bTutoringVariantTest {
         adminCookie = login(prefix + "adm");
 
         int n = CH_SEQ.incrementAndGet();
-        chapterId = db.queryForObject("INSERT INTO rs_chapter(subject_id,code,name,sort_order) VALUES (1,?,?,?) RETURNING id", Long.class, "M10B" + n, prefix + "ch", n);
-        kpId = db.queryForObject("INSERT INTO rs_knowledge_point(subject_id,chapter_id,code,name,sort_order) VALUES (1,?,?,?,1) RETURNING id", Long.class, chapterId, "M10B" + n + "-KP", prefix + "kp");
+        chapterId = db.queryForObject("INSERT INTO rs_chapter(subject_id,code,name,sort_order) VALUES (1,?,?,?) RETURNING id", Long.class, "M10B-" + prefix, prefix + "ch", n);
+        kpId = db.queryForObject("INSERT INTO rs_knowledge_point(subject_id,chapter_id,code,name,sort_order) VALUES (1,?,?,?,1) RETURNING id", Long.class, chapterId, "M10B-" + prefix + "-KP", prefix + "kp");
 
         long[] qv = insertChoiceQuestion(kpId, "顺序表按索引随机访问元素的时间复杂度是多少？", "A", "O(1)", "O(n)", "O(log n)", "O(n^2)");
         sourceQuestionId = qv[0];

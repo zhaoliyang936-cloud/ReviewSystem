@@ -1,9 +1,11 @@
 package cn.reviewsystem.ai;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(name = "app.ai.scheduler.enabled", havingValue = "true", matchIfMissing = true)
 public class AiJobRecoveryScheduler {
     private final AiJobService jobService;
     private final AiProperties properties;
@@ -15,6 +17,10 @@ public class AiJobRecoveryScheduler {
 
     @Scheduled(fixedDelay = 15000)
     public void recover() {
-        jobService.recoverStale(properties.getPrepareTimeoutSeconds());
+        sweep();
+    }
+
+    public int sweep() {
+        return jobService.recoverStale(properties.getPrepareTimeoutSeconds());
     }
 }

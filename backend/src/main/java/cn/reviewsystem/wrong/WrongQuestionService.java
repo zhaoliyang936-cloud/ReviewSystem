@@ -469,20 +469,26 @@ public class WrongQuestionService {
         if ("SUSPECTED_ERROR".equals(category)) {
             Long distinctUsers = db.queryForObject(
                     """
-                    SELECT count(DISTINCT user_id) FROM rs_question_feedback
-                    WHERE question_id = ? AND category = 'SUSPECTED_ERROR' AND status <> 'CLOSED'
+                    SELECT count(DISTINCT f.user_id)
+                    FROM rs_question_feedback f
+                    WHERE f.question_id = ?
+                      AND f.category = 'SUSPECTED_ERROR'
+                      AND f.status <> 'CLOSED'
+                      AND f.created_at > COALESCE(
+                            (SELECT max(rc.resolved_at) FROM rs_question_review_case rc WHERE rc.question_id = ?),
+                            '-infinity'::timestamptz)
                     """,
                     Long.class,
-                    questionId
+                    questionId, questionId
             );
             if (distinctUsers != null && distinctUsers >= 3) {
                 db.update(
                         """
                         INSERT INTO rs_question_review_case(question_id, trigger_feedback_count, reason)
-                        VALUES (?, 3, 'THREE_STUDENT_REPORTS')
-                        ON CONFLICT (question_id) DO NOTHING
+                        VALUES (?, ?, 'THREE_STUDENT_REPORTS')
+                        ON CONFLICT (question_id) WHERE status = 'OPEN' DO NOTHING
                         """,
-                        questionId
+                        questionId, distinctUsers.intValue()
                 );
             }
         }
