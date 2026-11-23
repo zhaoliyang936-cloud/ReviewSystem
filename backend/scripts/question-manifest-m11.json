@@ -1,0 +1,2373 @@
+{
+  "sourceLabel": "M11-EXTRA",
+  "questions": [
+    {
+      "sourceQuestionNo": "M11-CH04-KP01-01",
+      "knowledgePointId": "10",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "下列关于串的叙述中，正确的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "空串与只包含一个空格字符的串是相同的"
+          },
+          {
+            "key": "B",
+            "text": "串的长度是指串中不同字符的个数"
+          },
+          {
+            "key": "C",
+            "text": "串是仅由零个或多个字符组成的有限序列"
+          },
+          {
+            "key": "D",
+            "text": "任意两个串都可以比较大小，且较长的串一定更大"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "C"
+      },
+      "explanation": "空串长度为 0，空格串长度为 1；串长是字符总个数；串大小按字典序比较，与长度无必然正相关。",
+      "sourceRef": "自编-CH04-KP01-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP01-02",
+      "knowledgePointId": "10",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "已知主串 S = \"data_structure\"，则 S 中互不相同的非空子串共有（  ）个（含 S 本身，不含空串）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "105"
+          },
+          {
+            "key": "B",
+            "text": "102"
+          },
+          {
+            "key": "C",
+            "text": "91"
+          },
+          {
+            "key": "D",
+            "text": "14"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "S 长度为 14，总非空子串位置数为 14*15/2 = 105。重复单字符有 't'(多1)、'u'(多1)、'r'(多1)，长度 >= 2 的相邻字符对均唯一，故共 105 - 3 = 102 个。",
+      "sourceRef": "自编-CH04-KP01-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP01-03",
+      "knowledgePointId": "10",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "采用块链存储结构存储长度为 n 的串，若每个结点存储 k 个字符，指针域占 p 字节，每个字符占 1 字节，则该块链结构的存储密度为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "k / (k + p)"
+          },
+          {
+            "key": "B",
+            "text": "p / (k + p)"
+          },
+          {
+            "key": "C",
+            "text": "1 / (k + p)"
+          },
+          {
+            "key": "D",
+            "text": "n / (k + p)"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "A"
+      },
+      "explanation": "存储密度等于数据域所占空间与整个结点所占空间之比，即 k / (k + p)。",
+      "sourceRef": "自编-CH04-KP01-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP01-04",
+      "knowledgePointId": "10",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "串 S = \"ababa\" 的非空真前缀个数为{{blank}}，长度为 2 的子串按位置计共有{{blank}}个。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "4"
+            ]
+          },
+          {
+            "accepted": [
+              "4"
+            ]
+          }
+        ]
+      },
+      "explanation": "长度 n=5 的串，非空真前缀长度为 1..4 共 4 个；长度为 2 的子串起始位置为 1..4 共 4 个。",
+      "sourceRef": "自编-CH04-KP01-4"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP01-05",
+      "knowledgePointId": "10",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "若串 S1 = \"algorithm\"，S2 = \"algo\"，执行 SubString(sub, S1, 5, 5)（1-based 起始位置）后，sub 的值为{{blank}}；执行 StrCompare(S1, S2) 的返回值符号为{{blank}}（填 正、负 或 0）。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "rithm",
+              "\"rithm\""
+            ]
+          },
+          {
+            "accepted": [
+              "正"
+            ]
+          }
+        ]
+      },
+      "explanation": "从第 5 个字符起取 5 个字符得 \"rithm\"；S2 是 S1 的真前缀且 S1 更长，故 StrCompare(S1, S2) > 0。",
+      "sourceRef": "自编-CH04-KP01-5"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP01-06",
+      "knowledgePointId": "10",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "简述串的三种常见存储结构（定长顺序存储、堆分配存储、块链存储）各自的特点及适用场景，并说明块链存储中“结点大小（块大小）”选择过小或过大分别会带来什么问题。"
+      },
+      "answer": {
+        "referenceAnswer": "1. 定长顺序存储：使用固定长度数组存储字符序列，随机访问 O(1)，但存在截断或空间浪费问题，适合长度上限明确且较小的串。\n2. 堆分配存储：在堆区按需动态分配连续空间，兼具随机访问 O(1) 与长度灵活的优点，连接或替换操作可能需要重新分配并复制，适合长度变化较大的通用场景。\n3. 块链存储：用链表连接多个定长字符块，插入和删除块级操作方便、无需整体移动，但随机访问需 O(n) 且存在指针开销，适合频繁插入/删除的超长文本。\n4. 块大小权衡：块大小过小会导致指针域占比过高、存储密度急剧下降；块大小过大则在串长不足整块或局部修改时产生大量内部填充浪费与块内移动开销。"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "说明定长顺序存储的特点与适用场景"
+          },
+          {
+            "score": 2,
+            "criterion": "说明堆分配存储的特点与适用场景"
+          },
+          {
+            "score": 2,
+            "criterion": "说明块链存储的特点与适用场景"
+          },
+          {
+            "score": 2,
+            "criterion": "准确分析块大小过小导致存储密度低、过大导致内部浪费与移动开销"
+          }
+        ]
+      },
+      "explanation": "从空间分配方式、随机访问能力、修改开销与存储密度四个维度对比三种表示。",
+      "sourceRef": "自编-CH04-KP01-6"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP02-01",
+      "knowledgePointId": "9",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "设主串长度为 n，模式串长度为 m（n >= m），采用朴素（BF）模式匹配算法在最坏情况下需要进行的字符比较次数数量级为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "O(n + m)"
+          },
+          {
+            "key": "B",
+            "text": "O(n * m)"
+          },
+          {
+            "key": "C",
+            "text": "O(m^2)"
+          },
+          {
+            "key": "D",
+            "text": "O(n log m)"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "当主串为 \"aaaa...ab\"、模式串为 \"aaa...ab\" 时，每趟都在模式串最后一位失配，共需 (n - m + 1) * m 次比较，即 O(n * m)。",
+      "sourceRef": "自编-CH04-KP02-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP02-02",
+      "knowledgePointId": "9",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "采用 KMP 算法进行模式匹配时，若模式串 P = \"ababaab\"（字符下标从 1 开始，next[1] = 0），则 P 的 next 数组为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "0, 1, 1, 2, 3, 4, 2"
+          },
+          {
+            "key": "B",
+            "text": "0, 1, 1, 2, 3, 2, 2"
+          },
+          {
+            "key": "C",
+            "text": "0, 1, 2, 2, 3, 4, 2"
+          },
+          {
+            "key": "D",
+            "text": "0, 1, 1, 2, 2, 3, 2"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "A"
+      },
+      "explanation": "逐位求最长相等前后缀长度+1：j=1->0, j=2->1, j=3->1, j=4->2, j=5->3, j=6->4, j=7('b'前\"ababaa\"最长相等前后缀\"a\"长1)->2。",
+      "sourceRef": "自编-CH04-KP02-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP02-03",
+      "knowledgePointId": "9",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "在 KMP 算法中引入 nextval 数组的主要目的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "降低求解模式串前缀表的空间复杂度"
+          },
+          {
+            "key": "B",
+            "text": "当 P[j] == P[next[j]] 时跳过已知必然再次失配的比较"
+          },
+          {
+            "key": "C",
+            "text": "使主串指针 i 能够按步长 m 向前跳跃"
+          },
+          {
+            "key": "D",
+            "text": "支持多模式串同时匹配"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "当 S[i] != P[j] 且 P[next[j]] == P[j] 时，S[i] 必然也不等于 P[next[j]]，nextval 直接跳转到字符不同的位置，减少无效比较。",
+      "sourceRef": "自编-CH04-KP02-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP02-04",
+      "knowledgePointId": "9",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "已知模式串 P = \"aaaab\"（下标从 1 开始，next[1] = 0），则其 next 数组为{{blank}}，优化后的 nextval 数组为{{blank}}（数字间用英文逗号分隔，无空格）。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "0,1,2,3,4"
+            ]
+          },
+          {
+            "accepted": [
+              "0,0,0,0,4"
+            ]
+          }
+        ]
+      },
+      "explanation": "P[1..4] 全为 'a'，故 next = [0,1,2,3,4]；j=2,3,4 时 P[j]==P[next[j]]=='a'，因此 nextval[2..4] 均继承 nextval[1]=0，nextval[5]=4。",
+      "sourceRef": "自编-CH04-KP02-4"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP02-05",
+      "knowledgePointId": "9",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "在主串 S = \"ababcabcacbab\"（长度 13）中查找模式串 P = \"abcac\"（长度 5），模式串在主串中首次出现的 0-based 起始下标为{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "5"
+            ]
+          }
+        ]
+      },
+      "explanation": "S[0..4]=\"ababc\"，S[5..9]=\"abcac\"，故首次匹配位置为 0-based 下标 5。",
+      "sourceRef": "自编-CH04-KP02-5"
+    },
+    {
+      "sourceQuestionNo": "M11-CH04-KP02-06",
+      "knowledgePointId": "9",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "编写 C/C++ 函数 `int kmpSearch(const char *s, const char *p)`，使用 KMP 算法在主串 s 中查找模式串 p 首次出现的 0-based 起始下标；若 p 为空串返回 0，若未找到返回 -1。要求写出 0-based 部分匹配表（next）的构建与主匹配过程。"
+      },
+      "answer": {
+        "referenceAnswer": "int kmpSearch(const char *s, const char *p) {\n    int n = 0, m = 0;\n    while (s[n] != '\\0') n++;\n    while (p[m] != '\\0') m++;\n    if (m == 0) return 0;\n    if (n < m) return -1;\n    int *next = (int *)malloc(sizeof(int) * m);\n    next[0] = 0;\n    for (int i = 1, len = 0; i < m; ) {\n        if (p[i] == p[len]) {\n            next[i++] = ++len;\n        } else if (len > 0) {\n            len = next[len - 1];\n        } else {\n            next[i++] = 0;\n        }\n    }\n    int i = 0, j = 0, ans = -1;\n    while (i < n) {\n        if (s[i] == p[j]) {\n            i++; j++;\n            if (j == m) { ans = i - m; break; }\n        } else if (j > 0) {\n            j = next[j - 1];\n        } else {\n            i++;\n        }\n    }\n    free(next);\n    return ans;\n}"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 1,
+            "criterion": "正确处理 m == 0 返回 0 与 n < m 返回 -1 的边界条件"
+          },
+          {
+            "score": 3,
+            "criterion": "正确构建 0-based 最长相等真前后缀表 next"
+          },
+          {
+            "score": 3,
+            "criterion": "主串指针不回溯、模式串失配按 next[j-1] 回退并正确返回 i - m 或 -1"
+          }
+        ]
+      },
+      "explanation": "先通过双指针线性扫描模式串构造前缀函数数组 next，再在主串上单调递增指针 i，失配时仅回退模式串指针 j。",
+      "sourceRef": "自编-CH04-KP02-6"
+    },
+    {
+      "sourceQuestionNo": "M11-CH05-KP02-01",
+      "knowledgePointId": "11",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "广义表 L = ((a, b), c, (d, (e))) 的长度和深度分别为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "长度 3，深度 3"
+          },
+          {
+            "key": "B",
+            "text": "长度 5，深度 3"
+          },
+          {
+            "key": "C",
+            "text": "长度 3，深度 4"
+          },
+          {
+            "key": "D",
+            "text": "长度 5，深度 4"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "A"
+      },
+      "explanation": "L 顶层有 3 个元素：(a, b)、c、(d, (e))，故长度为 3；括号最大嵌套层数为 3 层，故深度为 3。",
+      "sourceRef": "自编-CH05-KP02-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH05-KP02-02",
+      "knowledgePointId": "11",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "已知广义表 A = (a, (b, c), d)，执行操作 GetHead(GetTail(GetHead(GetTail(A)))) 的结果是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "b"
+          },
+          {
+            "key": "B",
+            "text": "c"
+          },
+          {
+            "key": "C",
+            "text": "(c)"
+          },
+          {
+            "key": "D",
+            "text": "((b, c))"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "GetTail(A) = ((b, c), d)；GetHead(...) = (b, c)；GetTail((b, c)) = (c)；GetHead((c)) = c。",
+      "sourceRef": "自编-CH05-KP02-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH05-KP02-03",
+      "knowledgePointId": "11",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "关于广义表，下列说法错误的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "广义表的元素既可以是原子，也可以是子表"
+          },
+          {
+            "key": "B",
+            "text": "非空广义表的表尾一定是一个广义表"
+          },
+          {
+            "key": "C",
+            "text": "广义表可以是一个递归表，即把自身作为子表"
+          },
+          {
+            "key": "D",
+            "text": "空表 () 的深度为 0"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "D"
+      },
+      "explanation": "按定义，空表 () 的长度为 0，深度为 1（原子的深度为 0）。",
+      "sourceRef": "自编-CH05-KP02-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH05-KP02-04",
+      "knowledgePointId": "11",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "广义表 B = ((), (a, (b, c))) 的长度为{{blank}}，深度为{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "2"
+            ]
+          },
+          {
+            "accepted": [
+              "3"
+            ]
+          }
+        ]
+      },
+      "explanation": "B 顶层有两个子表元素 () 和 (a, (b, c))，故长度 2；最深子表 (b, c) 处于第 3 层括号内，故深度 3。",
+      "sourceRef": "自编-CH05-KP02-4"
+    },
+    {
+      "sourceQuestionNo": "M11-CH05-KP02-05",
+      "knowledgePointId": "11",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "若广义表 LS = ((x, y), (z))，要从 LS 中取出原子 y，需执行的表达式为 GetHead(GetTail(GetHead({{blank}})))。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "LS"
+            ]
+          }
+        ]
+      },
+      "explanation": "GetHead(LS) = (x, y)，GetTail((x, y)) = (y)，GetHead((y)) = y。",
+      "sourceRef": "自编-CH05-KP02-5"
+    },
+    {
+      "sourceQuestionNo": "M11-CH05-KP02-06",
+      "knowledgePointId": "11",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "请写出广义表头尾链表存储表示法中“表结点”和“原子结点”的字段组成，并说明为什么采用该存储结构时，任意非空广义表的表尾（Tail）操作只需 O(1) 时间即可完成。"
+      },
+      "answer": {
+        "referenceAnswer": "1. 结点结构：采用 tag 标志域区分结点类型。\n   - 原子结点（tag = 0）：包含标志域 tag 和原子值域 atom。\n   - 表结点（tag = 1）：包含标志域 tag、指向表头元素的指针 hp 以及指向表尾（除表头外其余元素构成的子表）的指针 tp。\n2. O(1) 表尾操作原因：因为表结点中专门维护了 tp 指针直接指向由其余元素组成的子表（若无其余元素则 tp 为 NULL），因此对任意非空广义表取表尾只需直接读取根表结点的 tp 指针，无需遍历表内元素，时间复杂度为 O(1)。"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "正确写出原子结点的 tag 与 atom 域"
+          },
+          {
+            "score": 3,
+            "criterion": "正确写出表结点的 tag、hp 与 tp 域及含义"
+          },
+          {
+            "score": 3,
+            "criterion": "清晰解释直接返回 tp 指针即可得到表尾，故时间复杂度为 O(1)"
+          }
+        ]
+      },
+      "explanation": "抓住头尾链表存储法中“表结点用 hp 指向表头、tp 指向剩余元素构成的列表”这一设计特点作答。",
+      "sourceRef": "自编-CH05-KP02-6"
+    },
+    {
+      "sourceQuestionNo": "M11-CH02-KP01-01",
+      "knowledgePointId": "5",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "在长度为 n 的顺序表中，若在各位置等概率插入一个新元素，则平均需要移动元素的个数为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "n / 2"
+          },
+          {
+            "key": "B",
+            "text": "(n - 1) / 2"
+          },
+          {
+            "key": "C",
+            "text": "(n + 1) / 2"
+          },
+          {
+            "key": "D",
+            "text": "n"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "A"
+      },
+      "explanation": "共有 n + 1 个可插入位置，插入到第 i 个位置（0 <= i <= n）需移动 n - i 个元素，平均移动次数为 (0 + 1 + ... + n) / (n + 1) = n / 2。",
+      "sourceRef": "自编-CH02-KP01-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH02-KP01-02",
+      "knowledgePointId": "5",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "设顺序表 L 共有 10 个元素，删除第 i（1 <= i <= 10）个元素时，需要向前移动（  ）个元素。",
+        "options": [
+          {
+            "key": "A",
+            "text": "10 - i"
+          },
+          {
+            "key": "B",
+            "text": "11 - i"
+          },
+          {
+            "key": "C",
+            "text": "i - 1"
+          },
+          {
+            "key": "D",
+            "text": "i"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "A"
+      },
+      "explanation": "第 i+1 到第 10 个元素均需前移一位，共 10 - i 个。",
+      "sourceRef": "自编-CH02-KP01-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH02-KP01-03",
+      "knowledgePointId": "5",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "在长度为 n 的顺序表中，等概率删除任意一个元素时，平均需要移动{{blank}}个元素。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "(n-1)/2",
+              "(n - 1) / 2"
+            ]
+          }
+        ]
+      },
+      "explanation": "共有 n 个删除位置，移动次数从 0 到 n-1，平均值为 (n - 1) / 2。",
+      "sourceRef": "自编-CH02-KP01-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH02-KP01-04",
+      "knowledgePointId": "5",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "设计一个时间复杂度为 O(n)、空间复杂度为 O(1) 的 C/C++ 算法 `int removeRange(int a[], int n, int s, int t)`，从长度为 n 的有序顺序表 a 中删除值在区间 [s, t]（包含端点，假设 s <= t）内的所有元素，返回删除后顺序表的新长度。"
+      },
+      "answer": {
+        "referenceAnswer": "int removeRange(int a[], int n, int s, int t) {\n    if (n <= 0 || s > t) return n;\n    int k = 0;\n    for (int i = 0; i < n; i++) {\n        if (a[i] < s || a[i] > t) {\n            a[k++] = a[i];\n        }\n    }\n    return k;\n}"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "正确处理空表或区间合法性边界"
+          },
+          {
+            "score": 3,
+            "criterion": "使用双指针/计数法原地保留不在 [s, t] 内的元素，保持相对次序"
+          },
+          {
+            "score": 2,
+            "criterion": "满足 O(n) 时间与 O(1) 空间复杂度并正确返回新长度 k"
+          }
+        ]
+      },
+      "explanation": "利用快慢双指针扫描一次数组，将所有不落入 [s, t] 的元素前移至慢指针 k 处覆盖即可。",
+      "sourceRef": "自编-CH02-KP01-4"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP03-01",
+      "knowledgePointId": "17",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "若一个连通无向带权图的所有边权值互不相同，则下列说法正确的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "该图的最小生成树不唯一"
+          },
+          {
+            "key": "B",
+            "text": "该图的最小生成树必定唯一"
+          },
+          {
+            "key": "C",
+            "text": "Prim 算法和 Kruskal 算法可能得到不同的最小生成树"
+          },
+          {
+            "key": "D",
+            "text": "权值最大的边一定不会出现在任何生成树中"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "由切割性质与回路性质，当无向连通图所有边权值互不相等时，其最小生成树唯一。",
+      "sourceRef": "自编-CH07-KP03-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP03-02",
+      "knowledgePointId": "17",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "使用 Dijkstra 算法求单源最短路径时，要求图中各边的权值（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "必须全部为正整数"
+          },
+          {
+            "key": "B",
+            "text": "不能包含负权边"
+          },
+          {
+            "key": "C",
+            "text": "不能包含零权边"
+          },
+          {
+            "key": "D",
+            "text": "必须互不相等"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "Dijkstra 算法基于贪心假设“已确定最短路的顶点其距离不会再被后续路径缩短”，负权边会破坏该单调性。",
+      "sourceRef": "自编-CH07-KP03-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP03-03",
+      "knowledgePointId": "17",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "Floyd-Warshall 算法用于求解任意两点间的最短路径，其核心三重循环的时间复杂度为{{blank}}，空间复杂度为{{blank}}（用大 O 记号表示，顶点数为 V）。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "O(V^3)",
+              "O(n^3)"
+            ]
+          },
+          {
+            "accepted": [
+              "O(V^2)",
+              "O(n^2)"
+            ]
+          }
+        ]
+      },
+      "explanation": "Floyd 算法包含三层嵌套循环（外层中转点 k，内两层起点 i 和终点 j），时间为 O(V^3)，距离矩阵空间为 O(V^2)。",
+      "sourceRef": "自编-CH07-KP03-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP03-04",
+      "knowledgePointId": "17",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "设无向连通图 G 有 4 个顶点 {A, B, C, D}，边及权值为：(A,B)=1, (A,C)=4, (B,C)=2, (B,D)=5, (C,D)=3。请分别说明使用 Prim 算法（从 A 出发）与 Kruskal 算法构造最小生成树时依次选入的边，并计算最小生成树的总权值。"
+      },
+      "answer": {
+        "referenceAnswer": "1. Prim 算法（从顶点 A 出发）：\n   - 第 1 步选边 (A, B)，权值 1，集合 {A, B}；\n   - 第 2 步选边 (B, C)，权值 2，集合 {A, B, C}；\n   - 第 3 步选边 (C, D)，权值 3，集合 {A, B, C, D}。\n2. Kruskal 算法（按边权升序）：\n   - 依次考察 (A,B)=1 -> 选入；(B,C)=2 -> 选入；(C,D)=3 -> 选入（此时已选 3 条边构成生成树，(A,C)=4 与 (B,D)=5 均构成回路，舍弃）。\n3. 最小生成树总权值 = 1 + 2 + 3 = 6。"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 3,
+            "criterion": "正确列出 Prim 算法从 A 出发依次选入的 3 条边"
+          },
+          {
+            "score": 3,
+            "criterion": "正确列出 Kruskal 算法按权升序选入的 3 条边"
+          },
+          {
+            "score": 2,
+            "criterion": "正确计算总权值为 6"
+          }
+        ]
+      },
+      "explanation": "Prim 按“点集扩展最近邻边”推进，Kruskal 按“全局边权升序并查集判环”推进，由于边权唯一，两者最终选出相同的边集。",
+      "sourceRef": "自编-CH07-KP03-4"
+    },
+    {
+      "sourceQuestionNo": "M11-CH03-KP03-01",
+      "knowledgePointId": "6",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "设循环队列的存储数组为 Q[0..7]（容量为 8，采用牺牲一个单元区分队空和队满），当前 front = 5，rear = 2，则队列中当前元素的个数为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "3"
+          },
+          {
+            "key": "B",
+            "text": "4"
+          },
+          {
+            "key": "C",
+            "text": "5"
+          },
+          {
+            "key": "D",
+            "text": "6"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "C"
+      },
+      "explanation": "循环队列元素个数公式为 (rear - front + MaxSize) % MaxSize = (2 - 5 + 8) % 8 = 5。",
+      "sourceRef": "自编-CH03-KP03-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH03-KP03-02",
+      "knowledgePointId": "6",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "若采用带头结点的单链表实现链式队列，队头指针 front 指向头结点，队尾指针 rear 指向尾结点，则队列为空的判定条件是{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "front == rear",
+              "front==rear"
+            ]
+          }
+        ]
+      },
+      "explanation": "带头结点的链队列初始化和空队时，front 和 rear 均指向头结点，即 front == rear。",
+      "sourceRef": "自编-CH03-KP03-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH03-KP03-03",
+      "knowledgePointId": "6",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "已知循环队列的结构定义为 `typedef struct { int data[MAXSIZE]; int front, rear, tag; } SqQueue;`，其中 `tag == 0` 表示最近一次操作为出队，`tag == 1` 表示最近一次操作为入队，初始时 `front = rear = 0, tag = 0`。请编写入队函数 `int enQueue(SqQueue *q, int x)`，队满返回 0，成功返回 1。"
+      },
+      "answer": {
+        "referenceAnswer": "int enQueue(SqQueue *q, int x) {\n    if (q->front == q->rear && q->tag == 1) {\n        return 0;\n    }\n    q->data[q->rear] = x;\n    q->rear = (q->rear + 1) % MAXSIZE;\n    q->tag = 1;\n    return 1;\n}"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 3,
+            "criterion": "准确使用 front == rear && tag == 1 判定队满并返回 0"
+          },
+          {
+            "score": 2,
+            "criterion": "正确存入元素并按模运算更新 rear 指针"
+          },
+          {
+            "score": 2,
+            "criterion": "正确将 tag 置为 1 并返回 1"
+          }
+        ]
+      },
+      "explanation": "引入 tag 后可利用全部 MAXSIZE 个存储单元：队满仅可能由入队导致 front == rear，故判满条件为 front == rear && tag == 1。",
+      "sourceRef": "自编-CH03-KP03-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH03-KP02-01",
+      "knowledgePointId": "7",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "将中缀表达式 `a + b * (c - d) - e / f` 转换为后缀表达式（逆波兰式），正确的结果是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "a b c d - * + e f / -"
+          },
+          {
+            "key": "B",
+            "text": "a b + c d - * e f / -"
+          },
+          {
+            "key": "C",
+            "text": "a b c d - * e f / - +"
+          },
+          {
+            "key": "D",
+            "text": "a b c - d * + e f / -"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "A"
+      },
+      "explanation": "先算 (c - d) 得 c d -，再乘 b 得 b c d - *，与 a 相加得 a b c d - * +，最后减去 e / f 得 a b c d - * + e f / -。",
+      "sourceRef": "自编-CH03-KP02-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH03-KP02-02",
+      "knowledgePointId": "7",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "后缀表达式 `6 2 3 - 4 * + 8 2 / -` 的计算结果为{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "-2"
+            ]
+          }
+        ]
+      },
+      "explanation": "2 - 3 = -1；(-1) * 4 = -4；6 + (-4) = 2；8 / 2 = 4；2 - 4 = -2。",
+      "sourceRef": "自编-CH03-KP02-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH03-KP02-03",
+      "knowledgePointId": "7",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "简述利用栈判断表达式中括号 `()`、`[]`、`{}` 是否配对合法的基本算法步骤，并说明在哪些情况下应判定为不合法。"
+      },
+      "answer": {
+        "referenceAnswer": "1. 算法步骤：\n   - 初始化一个空栈；\n   - 从左向右扫描表达式中的每个字符：\n     - 若遇到左括号（`(`、`[` 或 `{`），将其压入栈中；\n     - 若遇到右括号（`)`、`]` 或 `}`），检查栈是否为空：若栈空则不合法；否则弹出栈顶左括号，判断两者是否属于同一类型，不匹配则不合法；\n     - 其他非括号字符直接跳过；\n   - 扫描结束后，若栈为空则括号配对合法，否则不合法。\n2. 不合法的三类情况：\n   - 遇到右括号时栈已空（右括号多余）；\n   - 弹出的左括号与当前右括号类型不匹配（交叉或错配）；\n   - 整个表达式扫描完毕后栈仍非空（左括号多余）。"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "正确描述遇到左括号入栈的处理逻辑"
+          },
+          {
+            "score": 3,
+            "criterion": "正确描述遇到右括号时判空、出栈并检验类型匹配的逻辑"
+          },
+          {
+            "score": 3,
+            "criterion": "完整列出扫描结束判空及三类不合法情形"
+          }
+        ]
+      },
+      "explanation": "括号匹配遵循“后遇到的左括号先闭合”的 LIFO 特性，注意覆盖栈空与遍历结束非空两类边界。",
+      "sourceRef": "自编-CH03-KP02-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH03-KP01-01",
+      "knowledgePointId": "8",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "若元素的入栈顺序为 1, 2, 3, 4，且允许在入栈过程中随时出栈，则合法的出栈序列共有（  ）种。",
+        "options": [
+          {
+            "key": "A",
+            "text": "12"
+          },
+          {
+            "key": "B",
+            "text": "14"
+          },
+          {
+            "key": "C",
+            "text": "16"
+          },
+          {
+            "key": "D",
+            "text": "24"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "n 个不同元素按顺序入栈的合法出栈序列数为卡特兰数 C(2n, n) / (n + 1)，当 n = 4 时为 C(8, 4) / 5 = 70 / 5 = 14。",
+      "sourceRef": "自编-CH03-KP01-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH03-KP01-02",
+      "knowledgePointId": "8",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "关于共享栈（两个顺序栈共享同一片连续数组空间 data[0..MaxSize-1]，栈底分别设在两端），下列说法错误的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "两个栈的栈顶指针相向生长"
+          },
+          {
+            "key": "B",
+            "text": "当 top1 + 1 == top2 时，共享栈满"
+          },
+          {
+            "key": "C",
+            "text": "共享栈能显著提高空间利用率，减少溢出的可能"
+          },
+          {
+            "key": "D",
+            "text": "共享栈中任意一个栈的入栈操作时间复杂度为 O(n)"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "D"
+      },
+      "explanation": "共享栈的入栈和出栈操作均只在各自的栈顶进行，时间复杂度仍为 O(1)。",
+      "sourceRef": "自编-CH03-KP01-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH03-KP01-03",
+      "knowledgePointId": "8",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "设共享栈定义为 `typedef struct { int data[MAXSIZE]; int top1; int top2; } SharedStack;`，其中 `top1` 初始为 `-1`（0 号栈从左向右增长），`top2` 初始为 `MAXSIZE`（1 号栈从右向左增长）。请编写入栈函数 `int pushShared(SharedStack *s, int stackNo, int x)`，当 `stackNo` 为 0 或 1 时将 x 压入对应栈（成功返回 1，栈满或编号非法返回 0）。"
+      },
+      "answer": {
+        "referenceAnswer": "int pushShared(SharedStack *s, int stackNo, int x) {\n    if (stackNo != 0 && stackNo != 1) return 0;\n    if (s->top1 + 1 == s->top2) return 0;\n    if (stackNo == 0) {\n        s->data[++(s->top1)] = x;\n    } else {\n        s->data[--(s->top2)] = x;\n    }\n    return 1;\n}"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "校验 stackNo 合法性及使用 top1 + 1 == top2 判满"
+          },
+          {
+            "score": 2,
+            "criterion": "0 号栈执行 ++top1 后存入数据"
+          },
+          {
+            "score": 3,
+            "criterion": "1 号栈执行 --top2 后存入数据并返回 1"
+          }
+        ]
+      },
+      "explanation": "共享栈判满条件是两栈顶指针相邻（top1 + 1 == top2），0 号栈向右增、1 号栈向左减。",
+      "sourceRef": "自编-CH03-KP01-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH05-KP01-01",
+      "knowledgePointId": "12",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "将一个 6 阶上三角矩阵（下标从 1 开始）按行优先次序压缩存储到一维数组 B[0..20] 中（只存储上三角部分及对角线元素，下三角全为常数 c 不存），则矩阵元素 A[3][5] 在数组 B 中的下标为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "11"
+          },
+          {
+            "key": "B",
+            "text": "12"
+          },
+          {
+            "key": "C",
+            "text": "13"
+          },
+          {
+            "key": "D",
+            "text": "14"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "C"
+      },
+      "explanation": "第 1 行存 6 个（B[0..5]），第 2 行存 5 个（B[6..10]），第 3 行从 A[3][3] 开始依次为 B[11]=A[3][3]、B[12]=A[3][4]、B[13]=A[3][5]，故下标为 13。",
+      "sourceRef": "自编-CH05-KP01-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH05-KP01-02",
+      "knowledgePointId": "12",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "设 n 阶对称矩阵 A（下标从 1 开始）的下三角部分按行优先压缩存入一维数组 B[0 .. n(n+1)/2 - 1] 中，则当 i >= j 时，元素 A[i][j] 对应的 B 数组下标公式为{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "i*(i-1)/2+j-1",
+              "i*(i-1)/2 + j - 1"
+            ]
+          }
+        ]
+      },
+      "explanation": "前 i-1 行共有 1+2+...+(i-1) = i(i-1)/2 个元素，第 i 行第 j 列是第 j 个元素，0-based 下标需再减 1。",
+      "sourceRef": "自编-CH05-KP01-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH05-KP01-03",
+      "knowledgePointId": "12",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "稀疏矩阵常用的压缩存储方式有“三元组顺序表”和“十字链表”两种。请对比这两种存储方式在结构组成、随机存取能力以及矩阵元素插入/删除操作复杂度上的主要差异，并说明各自适用场景。"
+      },
+      "answer": {
+        "referenceAnswer": "1. 结构组成：\n   - 三元组顺序表：用连续数组按行（或列）主序存储非零元的 (row, col, val) 三元组，并记录矩阵总行数、总列数与非零元个数。\n   - 十字链表：为每个非零元建立结点，包含 row、col、val 以及指向同行下一个非零元的 right 指针和指向同列下一个非零元的 down 指针，另设行头指针数组与列头指针数组。\n2. 存取与修改差异：\n   - 三元组顺序表不支持直接按行列随机存取（需二分或顺序查找），且插入/删除非零元（由零变非零或非零变零）时需大量移动数组元素，复杂度 O(t)（t 为非零元数）。\n   - 十字链表插入或删除非零元只需修改同行同列链表指针，无需移动其他结点，适合矩阵加减等非零元位置动态变化的运算；但不支持连续内存缓存友好的顺序扫描。\n3. 适用场景：三元组顺序表适合非零元位置固定、以转置/乘法读为主的静态矩阵；十字链表适合频繁增删非零元的动态矩阵运算。"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 3,
+            "criterion": "准确描述三元组顺序表与十字链表的结点/数组结构"
+          },
+          {
+            "score": 3,
+            "criterion": "对比两者在随机访问及增删非零元操作上的复杂度差异"
+          },
+          {
+            "score": 2,
+            "criterion": "正确指出静态与动态场景下的选型依据"
+          }
+        ]
+      },
+      "explanation": "从物理存储（顺序数组 vs 双向正交链表）推导出修改代价与适用场景的差异。",
+      "sourceRef": "自编-CH05-KP01-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP02-01",
+      "knowledgePointId": "18",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "对于具有 V 个顶点和 E 条边的连通图，采用邻接表存储时，深度优先搜索（DFS）和广度优先搜索（BFS）的时间复杂度分别为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "O(V + E) 和 O(V + E)"
+          },
+          {
+            "key": "B",
+            "text": "O(V^2) 和 O(V + E)"
+          },
+          {
+            "key": "C",
+            "text": "O(V + E) 和 O(V^2)"
+          },
+          {
+            "key": "D",
+            "text": "O(V * E) 和 O(V * E)"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "A"
+      },
+      "explanation": "邻接表存储下，每个顶点入栈/入队访问一次 O(V)，每条边表结点最多遍历一次（无向图两次）O(E)，故 DFS 和 BFS 均为 O(V + E)。",
+      "sourceRef": "自编-CH07-KP02-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP02-02",
+      "knowledgePointId": "18",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "在无权连通图中，使用{{blank}}算法从源点出发首次到达目标顶点时，所经过的路径必定是一条边数最少的路径；若对有向图做深度优先遍历，当且仅当DFS过程中不存在{{blank}}时，该有向图无环。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "BFS",
+              "广度优先搜索",
+              "广度优先遍历"
+            ]
+          },
+          {
+            "accepted": [
+              "回边",
+              "返祖边",
+              "后向边"
+            ]
+          }
+        ]
+      },
+      "explanation": "BFS 按距离层序扩展，首次到达即最短路径；DFS 树中存在指向祖先结点的回边（Back Edge）等价于存在有向环。",
+      "sourceRef": "自编-CH07-KP02-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP02-03",
+      "knowledgePointId": "18",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "已知无向图采用邻接矩阵 `int adj[MAXV][MAXV]`（顶点数为 `n`，顶点编号 `0..n-1`，`adj[u][v] == 1` 表示有边）存储。请编写 C/C++ 函数 `int countComponents(int adj[][MAXV], int n)`，利用 BFS 或 DFS 计算该无向图的连通分量个数。"
+      },
+      "answer": {
+        "referenceAnswer": "void dfsComp(int adj[][MAXV], int n, int u, int visited[]) {\n    visited[u] = 1;\n    for (int v = 0; v < n; v++) {\n        if (adj[u][v] && !visited[v]) {\n            dfsComp(adj, n, v, visited);\n        }\n    }\n}\nint countComponents(int adj[][MAXV], int n) {\n    int visited[MAXV] = {0};\n    int count = 0;\n    for (int i = 0; i < n; i++) {\n        if (!visited[i]) {\n            count++;\n            dfsComp(adj, n, i, visited);\n        }\n    }\n    return count;\n}"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "正确初始化 visited 数组并外层循环遍历所有未访问顶点"
+          },
+          {
+            "score": 3,
+            "criterion": "实现正确的 DFS 或 BFS 过程标记同一连通分量的所有顶点"
+          },
+          {
+            "score": 2,
+            "criterion": "每次从外层启动遍历时计数器加 1 并最终返回 count"
+          }
+        ]
+      },
+      "explanation": "每从一个尚未访问的顶点触发一次全连通分量遍历（DFS/BFS），即发现一个新的连通分量。",
+      "sourceRef": "自编-CH07-KP02-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH09-KP03-01",
+      "knowledgePointId": "23",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "下列关于二路归并排序（Merge Sort）和基数排序（Radix Sort）的叙述中，正确的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "二路归并排序是一种不稳定的排序算法"
+          },
+          {
+            "key": "B",
+            "text": "二路归并排序在最坏情况下的时间复杂度为 O(n^2)"
+          },
+          {
+            "key": "C",
+            "text": "基数排序不需要进行关键字之间的大小比较"
+          },
+          {
+            "key": "D",
+            "text": "基数排序的空间复杂度为 O(1)"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "C"
+      },
+      "explanation": "二路归并排序稳定且最坏时间复杂度为 O(n log n)；基数排序属于分配式排序，无需关键字比较，但需要 O(n + r) 辅助空间。",
+      "sourceRef": "自编-CH09-KP03-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH09-KP03-02",
+      "knowledgePointId": "23",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "对 n 个长度为 d 位的十进制正整数（基数 r = 10）进行最低位优先（LSD）基数排序，其时间复杂度为{{blank}}；采用二路归并排序对 n 个元素排序所需的辅助空间复杂度为{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "O(d(n+r))",
+              "O(d*(n+r))",
+              "O(d(n+10))"
+            ]
+          },
+          {
+            "accepted": [
+              "O(n)"
+            ]
+          }
+        ]
+      },
+      "explanation": "基数排序共进行 d 趟分配与收集，每趟 O(n + r)；二路归并需要与原数组等长的辅助归并数组 O(n)。",
+      "sourceRef": "自编-CH09-KP03-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH09-KP03-03",
+      "knowledgePointId": "23",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "请写出对序列 `{329, 457, 657, 839, 436, 720, 355}` 采用最低位优先（LSD）基数排序进行升序排序时，每一趟（个位、十位、百位）收集后的序列状态，并说明为什么每一趟分配与收集必须保持稳定性。"
+      },
+      "answer": {
+        "referenceAnswer": "1. 第 1 趟（按个位分配并收集）：\n   720, 355, 436, 457, 657, 329, 839\n2. 第 2 趟（按十位分配并收集）：\n   720, 329, 436, 839, 355, 457, 657\n3. 第 3 趟（按百位分配并收集）：\n   329, 355, 436, 457, 657, 720, 839\n4. 保持稳定性的原因：在按更高位排序时，对于高位相同的元素，必须保留低位已经排好的相对次序；若单趟收集不稳定，低位的有序性会被破坏，导致最终结果错误。"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "第 1 趟按个位收集结果完全正确"
+          },
+          {
+            "score": 2,
+            "criterion": "第 2 趟按十位收集结果完全正确"
+          },
+          {
+            "score": 2,
+            "criterion": "第 3 趟按百位收集结果完全正确"
+          },
+          {
+            "score": 2,
+            "criterion": "准确说明高位相同元素需保留低位有序性"
+          }
+        ]
+      },
+      "explanation": "LSD 基数排序依赖“桶内先进先出（稳定）”来维持前序低位排序的成果。",
+      "sourceRef": "自编-CH09-KP03-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP04-01",
+      "knowledgePointId": "16",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "关于有向无环图（DAG）的拓扑排序，下列说法错误的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "任何有向无环图至少存在一个拓扑序列"
+          },
+          {
+            "key": "B",
+            "text": "若某有向图存在唯一拓扑序列，则该图必定是无环的"
+          },
+          {
+            "key": "C",
+            "text": "拓扑排序过程中每次只能选择入度为 0 的顶点输出"
+          },
+          {
+            "key": "D",
+            "text": "若用邻接矩阵存储有向图，拓扑排序得到的序列一定是唯一的"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "D"
+      },
+      "explanation": "拓扑序列是否唯一取决于图本身的偏序结构（同一时刻是否存在多个入度为 0 的顶点），与存储结构（邻接矩阵或邻接表）无关。",
+      "sourceRef": "自编-CH07-KP04-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP04-02",
+      "knowledgePointId": "16",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "在 AOE 网中，若某项活动 a_i 对应弧 `<u, v>`（持续时间为 dut），事件 u 的最早发生时间为 ve(u)，事件 v 的最迟发生时间为 vl(v)，则活动 a_i 的时间余量为{{blank}}；当该余量为{{blank}}时，a_i 为关键活动。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "vl(v)-dut-ve(u)",
+              "vl(v) - dut - ve(u)",
+              "l(i)-e(i)"
+            ]
+          },
+          {
+            "accepted": [
+              "0"
+            ]
+          }
+        ]
+      },
+      "explanation": "活动的最早开始时间 e(i) = ve(u)，最迟开始时间 l(i) = vl(v) - dut，时间余量为 l(i) - e(i) = vl(v) - dut - ve(u)，余量为 0 即关键活动。",
+      "sourceRef": "自编-CH07-KP04-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP04-03",
+      "knowledgePointId": "16",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "在 AOE 网中，若要缩短整个工程的总工期，是否只需缩短任意一条关键路径上的任意一个关键活动即可？请结合关键路径的特性给出解释与正确做法。"
+      },
+      "answer": {
+        "referenceAnswer": "1. 结论：不一定。\n2. 原因分析：\n   - AOE 网中可能同时存在多条关键路径（长度均等于总工期）。如果只缩短其中一条关键路径上的某个关键活动，而未缩短其他并行的关键路径，则总工期仍由未缩短的关键路径决定，工程总工期不会减少。\n   - 此外，即使只有一条关键路径，若对某一关键活动缩短过多，也可能使原本的非关键路径变为新的关键路径，从而限制实际工期缩减量。\n3. 正确做法：必须找出所有关键路径，选择能够同时缩短全部关键路径的活动组合（例如多条关键路径共有的关键活动，或在各条关键路径上分别同步缩短），并重新计算新工期。"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "明确回答“不一定”"
+          },
+          {
+            "score": 3,
+            "criterion": "分析存在多条并行关键路径时单点缩短无效的原因"
+          },
+          {
+            "score": 3,
+            "criterion": "说明可能产生新关键路径及给出同步缩短所有关键路径的正确策略"
+          }
+        ]
+      },
+      "explanation": "工程总工期等于源点到汇点的最长路径长度，所有最长路径都必须被缩短才能降低总工期。",
+      "sourceRef": "自编-CH07-KP04-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH02-KP03-01",
+      "knowledgePointId": "3",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "在带头结点的单向循环链表中，若仅设一个尾指针 rear（不设头指针），则下列操作中时间复杂度不是 O(1) 的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "在表头插入一个新结点"
+          },
+          {
+            "key": "B",
+            "text": "在表尾插入一个新结点"
+          },
+          {
+            "key": "C",
+            "text": "删除表头第一个数据结点"
+          },
+          {
+            "key": "D",
+            "text": "删除表尾最后一个数据结点"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "D"
+      },
+      "explanation": "rear->next 即头结点，故表头插删及表尾插入均为 O(1)；但删除尾结点需要找到 rear 的直接前驱，在单向循环链表中必须从头遍历，需 O(n) 时间。",
+      "sourceRef": "自编-CH02-KP03-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH02-KP03-02",
+      "knowledgePointId": "3",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "设带头结点的双向循环链表头指针为 L（结点指针域为 prior 和 next），则该链表为空表的判定条件是 L->next == L 且{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "L->prior == L",
+              "L->prior==L"
+            ]
+          }
+        ]
+      },
+      "explanation": "空表时头结点的前驱和后继指针均指向其自身。",
+      "sourceRef": "自编-CH02-KP03-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH08-KP03-01",
+      "knowledgePointId": "20",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "在散列表中，装填因子（Load Factor）α 的定义是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "散列表的槽位数 / 表中已填入的记录数"
+          },
+          {
+            "key": "B",
+            "text": "表中已填入的记录数 / 散列表的长度"
+          },
+          {
+            "key": "C",
+            "text": "发生冲突的次数 / 总查找次数"
+          },
+          {
+            "key": "D",
+            "text": "同义词的个数 / 散列表的长度"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "装填因子 α = n / m，其中 n 为表中记录数，m 为散列表长，α 越大发生冲突的可能性越大。",
+      "sourceRef": "自编-CH08-KP03-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH08-KP03-02",
+      "knowledgePointId": "20",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "设散列表长度为 m = 11（地址 0..10），散列函数为 H(key) = key % 11，采用线性探测再散列法解决冲突。请依次插入关键字序列 {14, 25, 3, 17, 28}，写出每个关键字最终存放的地址及探测次数，并计算在等概率下查找成功的平均查找长度（ASL）。"
+      },
+      "answer": {
+        "referenceAnswer": "1. 插入过程与探测次数：\n   - 14 % 11 = 3 -> 存入地址 3，探测 1 次；\n   - 25 % 11 = 3（冲突）-> 探测地址 4 空闲 -> 存入地址 4，探测 2 次；\n   - 3 % 11 = 3（冲突）-> 探测地址 4（冲突）-> 探测地址 5 空闲 -> 存入地址 5，探测 3 次；\n   - 17 % 11 = 6 -> 存入地址 6，探测 1 次；\n   - 28 % 11 = 6（冲突）-> 探测地址 7 空闲 -> 存入地址 7，探测 2 次。\n2. 存放结果：3:14, 4:25, 5:3, 6:17, 7:28。\n3. 查找成功 ASL = (1 + 2 + 3 + 1 + 2) / 5 = 9 / 5 = 1.8。"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 4,
+            "criterion": "正确给出 5 个关键字的最终散列地址（3, 4, 5, 6, 7）"
+          },
+          {
+            "score": 2,
+            "criterion": "正确统计各关键字的探测次数（1, 2, 3, 1, 2）"
+          },
+          {
+            "score": 2,
+            "criterion": "正确计算查找成功 ASL = 9/5（或 1.8）"
+          }
+        ]
+      },
+      "explanation": "线性探测法每次冲突后按 (H(key) + d) % m（d = 1, 2, ...）顺序向后探查，插入时的探测次数即查找成功时的比较次数。",
+      "sourceRef": "自编-CH08-KP03-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH09-KP02-01",
+      "knowledgePointId": "24",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "对 n 个元素进行堆排序（升序），下列说法错误的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "堆排序的时间复杂度在最好、最坏和平均情况下均为 O(n log n)"
+          },
+          {
+            "key": "B",
+            "text": "堆排序只需要 O(1) 的辅助空间"
+          },
+          {
+            "key": "C",
+            "text": "堆排序是一种稳定的排序算法"
+          },
+          {
+            "key": "D",
+            "text": "初始建堆的时间复杂度为 O(n)"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "C"
+      },
+      "explanation": "堆排序在筛选和堆顶/堆尾交换元素时可能改变相同关键字元素的相对次序，因此是不稳定的排序算法。",
+      "sourceRef": "自编-CH09-KP02-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH09-KP02-02",
+      "knowledgePointId": "24",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "请编写 C/C++ 函数 `void selectionSort(int a[], int n)`，对长度为 n 的整型数组进行简单选择排序（升序），并在注释或结构中体现仅当最小元素下标不等于当前位置时才执行交换。"
+      },
+      "answer": {
+        "referenceAnswer": "void selectionSort(int a[], int n) {\n    for (int i = 0; i < n - 1; i++) {\n        int minIdx = i;\n        for (int j = i + 1; j < n; j++) {\n            if (a[j] < a[minIdx]) {\n                minIdx = j;\n            }\n        }\n        if (minIdx != i) {\n            int tmp = a[i];\n            a[i] = a[minIdx];\n            a[minIdx] = tmp;\n        }\n    }\n}"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "外层循环控制有序区边界 i 从 0 到 n-2"
+          },
+          {
+            "score": 3,
+            "criterion": "内层循环在 [i+1, n-1] 中正确找出最小值下标 minIdx"
+          },
+          {
+            "score": 2,
+            "criterion": "判断 minIdx != i 后正确交换 a[i] 与 a[minIdx]"
+          }
+        ]
+      },
+      "explanation": "简单选择排序每趟从未排序区间选出最小元素放到有序区末尾，共 n-1 趟。",
+      "sourceRef": "自编-CH09-KP02-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH01-KP02-01",
+      "knowledgePointId": "1",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "下列程序段中 `sum++` 语句的执行次数对应的时间复杂度为（  ）。\n```c\nint sum = 0;\nfor (int i = 1; i <= n; i *= 2) {\n    for (int j = 1; j <= i; j++) {\n        sum++;\n    }\n}\n```",
+        "options": [
+          {
+            "key": "A",
+            "text": "O(log n)"
+          },
+          {
+            "key": "B",
+            "text": "O(n)"
+          },
+          {
+            "key": "C",
+            "text": "O(n log n)"
+          },
+          {
+            "key": "D",
+            "text": "O(n^2)"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "外层 i 依次取 1, 2, 4, ..., 2^k（2^k <= n），内层执行次数之和为 1 + 2 + 4 + ... + 2^k = 2^(k+1) - 1 < 2n，故总时间复杂度为 O(n)。",
+      "sourceRef": "自编-CH01-KP02-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH01-KP02-02",
+      "knowledgePointId": "1",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "关于算法时间复杂度的渐近表示，下列说法正确的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "T(n) = 3n^2 + 100n log n 的时间复杂度为 O(n^2 log n)"
+          },
+          {
+            "key": "B",
+            "text": "算法的空间复杂度是指算法程序本身占用的存储空间大小"
+          },
+          {
+            "key": "C",
+            "text": "递归计算阶乘 f(n) = n * f(n - 1)（f(0)=1）的空间复杂度为 O(n)"
+          },
+          {
+            "key": "D",
+            "text": "O(1) 表示算法只需执行 1 条指令"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "C"
+      },
+      "explanation": "递归求阶乘最多同时存在 n + 1 层栈帧，辅助空间复杂度为 O(n)；A 应为 O(n^2)；B 空间复杂度指除输入外所需辅助空间；D 指常数时间而非仅 1 条指令。",
+      "sourceRef": "自编-CH01-KP02-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH01-KP02-03",
+      "knowledgePointId": "1",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "将下列时间复杂度按数量级从小到大排列：O(n!)、O(n log n)、O(2^n)、O(n^(3/2))，排在第 2 位的是{{blank}}，排在第 4 位的是{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "O(n^(3/2))",
+              "n^(3/2)"
+            ]
+          },
+          {
+            "accepted": [
+              "O(n!)",
+              "n!"
+            ]
+          }
+        ]
+      },
+      "explanation": "常见渐近增长阶大小关系为：O(n log n) < O(n^(3/2)) < O(2^n) < O(n!)。",
+      "sourceRef": "自编-CH01-KP02-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH01-KP01-01",
+      "knowledgePointId": "2",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "下列关于数据逻辑结构与存储结构（物理结构）的叙述中，正确的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "数据的逻辑结构依赖于其物理存储结构"
+          },
+          {
+            "key": "B",
+            "text": "一种逻辑结构只能对应一种存储结构"
+          },
+          {
+            "key": "C",
+            "text": "线性表若采用链式存储，则物理地址不要求连续"
+          },
+          {
+            "key": "D",
+            "text": "栈和队列属于非线性数据结构"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "C"
+      },
+      "explanation": "逻辑结构独立于物理存储，同一种逻辑结构（如线性表）可采用顺序或链式存储；栈和队列均属于线性结构。",
+      "sourceRef": "自编-CH01-KP01-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH01-KP01-02",
+      "knowledgePointId": "2",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "请简述“数据结构”的三要素（逻辑结构、存储结构、数据的运算）各自的含义，并举例说明同一逻辑结构在不同存储结构下对运算效率的影响。"
+      },
+      "answer": {
+        "referenceAnswer": "1. 三要素含义：\n   - 逻辑结构：数据元素之间的逻辑关系（如集合、线性结构、树形结构、图状结构），与计算机内部存储无关。\n   - 存储结构（物理结构）：数据结构在计算机内存中的映像/表示方式（主要有顺序存储、链式存储、索引存储、散列存储）。\n   - 数据的运算：施加在数据上的操作定义（如插入、删除、查找、排序），运算的定义基于逻辑结构，而实现依赖于存储结构。\n2. 举例说明：以线性表为例，若采用顺序存储（数组），按位序随机访问的时间复杂度为 O(1)，但中间插入/删除需移动元素为 O(n)；若采用链式存储（单链表），已知指针后插入/删除为 O(1)，但按位序访问需从头遍历为 O(n)。"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "准确说明逻辑结构的含义及分类"
+          },
+          {
+            "score": 2,
+            "criterion": "准确说明存储结构的含义及常见实现"
+          },
+          {
+            "score": 2,
+            "criterion": "准确说明数据的运算定义与实现的依赖关系"
+          },
+          {
+            "score": 2,
+            "criterion": "结合具体实例对比不同存储结构对运算效率的影响"
+          }
+        ]
+      },
+      "explanation": "围绕三要素的定义以及“逻辑结构决定操作语义、存储结构决定操作复杂度”展开。",
+      "sourceRef": "自编-CH01-KP01-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH08-KP01-01",
+      "knowledgePointId": "22",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "对长度为 15 的有序顺序表进行折半查找（二分查找），在等概率情况下查找成功时最多需要比较（  ）次关键字。",
+        "options": [
+          {
+            "key": "A",
+            "text": "3"
+          },
+          {
+            "key": "B",
+            "text": "4"
+          },
+          {
+            "key": "C",
+            "text": "5"
+          },
+          {
+            "key": "D",
+            "text": "8"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "15 个结点的折半查找判定树恰好是一棵深度为 4 的满二叉树（1 + 2 + 4 + 8 = 15），故最大比较次数为 4。",
+      "sourceRef": "自编-CH08-KP01-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH08-KP01-02",
+      "knowledgePointId": "22",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "采用分块查找（索引顺序查找）时，若线性表共有 100 个元素，将其均分为 10 块，每块 10 个元素。若块间索引表采用折半查找、块内采用顺序查找，则分块查找成功时的平均查找长度约为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "5.5"
+          },
+          {
+            "key": "B",
+            "text": "8.5"
+          },
+          {
+            "key": "C",
+            "text": "10.5"
+          },
+          {
+            "key": "D",
+            "text": "20"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "块内顺序查找平均长度为 (10 + 1) / 2 = 5.5；10 个块的索引表折半查找平均长度约为 log2(10+1) - 1 ≈ 2.9~3.0（1*1+2*2+3*4+4*3=29, 29/10=2.9），总 ASL ≈ 2.9 + 5.5 = 8.4 ≈ 8.5。",
+      "sourceRef": "自编-CH08-KP01-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH08-KP01-03",
+      "knowledgePointId": "22",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "请编写 C/C++ 函数 `int lowerBound(const int a[], int n, int target)`，在长度为 n 的非降序整型数组 `a` 中使用二分查找返回第一个大于或等于 `target` 的元素下标；若所有元素均小于 `target`，则返回 `n`。"
+      },
+      "answer": {
+        "referenceAnswer": "int lowerBound(const int a[], int n, int target) {\n    int low = 0, high = n;\n    while (low < high) {\n        int mid = low + (high - low) / 2;\n        if (a[mid] >= target) {\n            high = mid;\n        } else {\n            low = mid + 1;\n        }\n    }\n    return low;\n}"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "正确设定二分查找边界（如 [0, n) 或 [0, n-1] 并记录答案）"
+          },
+          {
+            "score": 3,
+            "criterion": "当 a[mid] >= target 时正确向左收缩区间（不漏掉 mid）"
+          },
+          {
+            "score": 2,
+            "criterion": "循环结束正确返回第一个满足条件的下标或 n"
+          }
+        ]
+      },
+      "explanation": "使用左闭右开区间 [0, n) 进行下界二分搜索，避免 mid 溢出且自然处理全小于 target 返回 n 的情况。",
+      "sourceRef": "自编-CH08-KP01-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH02-KP02-01",
+      "knowledgePointId": "4",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "在带头结点的单链表中，若要在指针 p 所指结点之后插入一个新结点 s，正确的指针操作顺序是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "p->next = s; s->next = p->next;"
+          },
+          {
+            "key": "B",
+            "text": "s->next = p->next; p->next = s;"
+          },
+          {
+            "key": "C",
+            "text": "s->next = p; p->next = s;"
+          },
+          {
+            "key": "D",
+            "text": "p->next = s->next; s->next = p;"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "必须先用 s->next 保存 p 的原后继结点地址，再令 p->next 指向 s，防止断链。",
+      "sourceRef": "自编-CH02-KP02-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH02-KP02-02",
+      "knowledgePointId": "4",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "设单链表 L 长度为 n，将 n 个元素通过“尾插法”依次建立单链表（维护尾指针 tail），整个建表过程的时间复杂度为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "O(1)"
+          },
+          {
+            "key": "B",
+            "text": "O(log n)"
+          },
+          {
+            "key": "C",
+            "text": "O(n)"
+          },
+          {
+            "key": "D",
+            "text": "O(n^2)"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "C"
+      },
+      "explanation": "维护尾指针 tail 后，每次插入新结点仅需 O(1) 操作，n 个元素共需 O(n) 时间。",
+      "sourceRef": "自编-CH02-KP02-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH02-KP02-03",
+      "knowledgePointId": "4",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "在不设头结点的单链表（头指针为 head）中，若要在表头之前插入一个新结点 s，需执行 s->next = head 和{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "head = s",
+              "head=s"
+            ]
+          }
+        ]
+      },
+      "explanation": "无头结点单链表在表头插入后必须更新头指针 head 指向新结点 s。",
+      "sourceRef": "自编-CH02-KP02-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH06-KP02-01",
+      "knowledgePointId": "14",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "已知某二叉树的先序遍历序列为 `ABDEC`，中序遍历序列为 `DBEAC`，则该二叉树的后序遍历序列为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "DEBCA"
+          },
+          {
+            "key": "B",
+            "text": "DEBAC"
+          },
+          {
+            "key": "C",
+            "text": "EDBCA"
+          },
+          {
+            "key": "D",
+            "text": "EDBAC"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "A"
+      },
+      "explanation": "根为 A，左子树中序 DBE、先序 BDE（根 B，左 D 右 E）；右子树 C。故后序为左子树(DEB) + 右子树(C) + 根(A) = DEBCA。",
+      "sourceRef": "自编-CH06-KP02-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH06-KP02-02",
+      "knowledgePointId": "14",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "在中序线索二叉树中，若某结点 P 有右孩子（rtag == 0），则 P 在中序遍历下的直接后继是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "P 的右孩子"
+          },
+          {
+            "key": "B",
+            "text": "P 的右子树中最左下方的结点"
+          },
+          {
+            "key": "C",
+            "text": "P 的右子树中最右下方的结点"
+          },
+          {
+            "key": "D",
+            "text": "P 的双亲结点"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "中序遍历顺序为“左-根-右”，访问完根 P 后接下来进入右子树，右子树中第一个被中序访问的是其最左下方结点。",
+      "sourceRef": "自编-CH06-KP02-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH06-KP02-03",
+      "knowledgePointId": "14",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "已知二叉树结点定义为 `typedef struct BiNode { int data; struct BiNode *left, *right; } BiNode;`。请编写 C/C++ 函数 `int countSingleChild(BiNode *root)`，统计并返该二叉树中度为 1（即只有一个孩子）的结点个数。"
+      },
+      "answer": {
+        "referenceAnswer": "int countSingleChild(BiNode *root) {\n    if (root == NULL) return 0;\n    int self = ((root->left != NULL && root->right == NULL) ||\n                (root->left == NULL && root->right != NULL)) ? 1 : 0;\n    return self + countSingleChild(root->left) + countSingleChild(root->right);\n}"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "正确处理 root == NULL 返回 0 的递归基准条件"
+          },
+          {
+            "score": 3,
+            "criterion": "准确判断当前结点恰有一个非空孩子（左空右非空或左非空右空）"
+          },
+          {
+            "score": 2,
+            "criterion": "正确递归累加左右子树的统计结果"
+          }
+        ]
+      },
+      "explanation": "采用递归遍历，对每个结点判断其左右指针是否一空一非空，并与左右子树的度为 1 结点数相加。",
+      "sourceRef": "自编-CH06-KP02-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP01-01",
+      "knowledgePointId": "19",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "一个具有 n 个顶点、e 条边的无向图采用邻接表存储，若每个顶点表结点占 1 个单元，每个边表结点占 1 个单元，则该邻接表共包含（  ）个表结点。",
+        "options": [
+          {
+            "key": "A",
+            "text": "n + e"
+          },
+          {
+            "key": "B",
+            "text": "n + 2e"
+          },
+          {
+            "key": "C",
+            "text": "2n + e"
+          },
+          {
+            "key": "D",
+            "text": "n * e"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "邻接表中顶点表有 n 个顶点结点，无向图每条边在两个顶点的边表中各出现一次，共 2e 个边表结点，合计 n + 2e。",
+      "sourceRef": "自编-CH07-KP01-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP01-02",
+      "knowledgePointId": "19",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "设无向图的邻接矩阵为 A（顶点 0..n-1，无自环，有边取 1 无边取 0），则第 i 行元素之和等于顶点 i 的{{blank}}；若为有向图（A[i][j]=1 表示存在弧 <i,j>），则第 j 列元素之和等于顶点 j 的{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "度"
+            ]
+          },
+          {
+            "accepted": [
+              "入度"
+            ]
+          }
+        ]
+      },
+      "explanation": "无向图邻接矩阵对称，行和或列和均为顶点度；有向图行和为出度，列和为入度。",
+      "sourceRef": "自编-CH07-KP01-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH07-KP01-03",
+      "knowledgePointId": "19",
+      "type": "SHORT_ANSWER",
+      "maxScore": 8,
+      "content": {
+        "stem": "在有向图的存储中，普通邻接表求某顶点的“入度”时间复杂度较高。请说明原因，并简述“十字链表”是如何同时解决有向图出边与入边快速查找问题的。"
+      },
+      "answer": {
+        "referenceAnswer": "1. 普通邻接表求入度耗时原因：有向图的邻接表只记录每个顶点出发的出边（邻接点），求顶点 v 的出度只需遍历其自身边表，但求顶点 v 的入度必须扫描全部 n 个顶点的边表统计指向 v 的边数，时间复杂度为 O(V + E)。\n2. 十字链表解决方式：\n   - 十字链表为每条有向弧 <u, v> 建立一个弧结点，除了弧尾 tailvex 和弧头 headvex 外，还包含两个指针域：hlink（指向同弧头的下一条弧）和 tlink（指向同弧尾的下一条弧）。\n   - 每个顶点结点同时维护两个链表头指针：firstin（指向以该顶点为弧头的第一条入弧）和 firstout（指向以该顶点为弧尾的第一条出弧）。\n   - 这样顺着 firstout + tlink 可遍历所有出边，顺着 firstin + hlink 可遍历所有入边，无需全图扫描。"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "说明邻接表求入度需遍历全图所有边表，复杂度 O(V + E)"
+          },
+          {
+            "score": 3,
+            "criterion": "写出十字链表弧结点的 tailvex/headvex/hlink/tlink 结构"
+          },
+          {
+            "score": 3,
+            "criterion": "写出顶点结点的 firstin/firstout 及同时支持出入边遍历的机制"
+          }
+        ]
+      },
+      "explanation": "邻接表仅按出边组织，逆邻接表仅按入边组织，十字链表将两者合二为一。",
+      "sourceRef": "自编-CH07-KP01-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH09-KP01-01",
+      "knowledgePointId": "25",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "下列关于快速排序和希尔排序的叙述中，正确的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "快速排序和希尔排序都是稳定的排序算法"
+          },
+          {
+            "key": "B",
+            "text": "当待排序列已经基本有序时，快速排序（以首元素为枢轴）的性能最好"
+          },
+          {
+            "key": "C",
+            "text": "希尔排序通过缩小增量进行分组直接插入排序，最坏时间复杂度优于 O(n^2)（如 Hibbard 增量下为 O(n^(3/2))）"
+          },
+          {
+            "key": "D",
+            "text": "快速排序在任何情况下空间复杂度都是 O(1)"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "C"
+      },
+      "explanation": "快排和希尔排序均不稳定；有序序列对固定首元素作枢轴的快排是最坏情况 O(n^2)；快排需要 O(log n)~O(n) 递归栈空间。",
+      "sourceRef": "自编-CH09-KP01-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH09-KP01-02",
+      "knowledgePointId": "25",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "请编写 C/C++ 函数 `int partition(int a[], int low, int high)`，实现快速排序中的一次划分操作（以 `a[low]` 作为枢轴 pivot，使得划分结束后枢轴左侧元素均 <= pivot、右侧元素均 >= pivot，并返回枢轴最终所在下标）。"
+      },
+      "answer": {
+        "referenceAnswer": "int partition(int a[], int low, int high) {\n    int pivot = a[low];\n    while (low < high) {\n        while (low < high && a[high] >= pivot) high--;\n        a[low] = a[high];\n        while (low < high && a[low] <= pivot) low++;\n        a[high] = a[low];\n    }\n    a[low] = pivot;\n    return low;\n}"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "正确保存枢轴 pivot = a[low]"
+          },
+          {
+            "score": 3,
+            "criterion": "双指针交替从右向左、从左向右扫描并搬移不满足条件的元素"
+          },
+          {
+            "score": 2,
+            "criterion": "在 low == high 处回填 pivot 并返回枢轴下标 low"
+          }
+        ]
+      },
+      "explanation": "经典挖坑法划分：先从右找小于 pivot 的元素填到左坑，再从左找大于 pivot 的元素填到右坑，最后将 pivot 填入相遇位置。",
+      "sourceRef": "自编-CH09-KP01-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH06-KP01-01",
+      "knowledgePointId": "15",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "一棵完全二叉树共有 100 个结点，则该完全二叉树的叶子结点个数和度为 1 的结点个数分别为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "50 和 0"
+          },
+          {
+            "key": "B",
+            "text": "50 和 1"
+          },
+          {
+            "key": "C",
+            "text": "49 和 1"
+          },
+          {
+            "key": "D",
+            "text": "51 和 0"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "完全二叉树总结点数 n = 100 为偶数，故度为 1 的结点数 n1 = 1；由 n0 + n1 + n2 = 100 且 n2 = n0 - 1 得 2*n0 = 100，故 n0 = 50。",
+      "sourceRef": "自编-CH06-KP01-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH06-KP01-02",
+      "knowledgePointId": "15",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "在一棵非空二叉树中，若叶子结点有 12 个，度为 1 的结点有 5 个，则该二叉树中度为 2 的结点个数以及总结点个数分别为（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "11 和 28"
+          },
+          {
+            "key": "B",
+            "text": "12 和 29"
+          },
+          {
+            "key": "C",
+            "text": "13 和 30"
+          },
+          {
+            "key": "D",
+            "text": "11 和 27"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "A"
+      },
+      "explanation": "由二叉树性质 n0 = n2 + 1 得 n2 = 12 - 1 = 11；总结点数 n = n0 + n1 + n2 = 12 + 5 + 11 = 28。",
+      "sourceRef": "自编-CH06-KP01-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH06-KP01-03",
+      "knowledgePointId": "15",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "一棵具有 n 个结点的二叉树若采用二叉链表存储，则共有 2n 个指针域，其中用于指向左右孩子的非空指针域有{{blank}}个，空指针域（线索）有{{blank}}个。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "n-1",
+              "n - 1"
+            ]
+          },
+          {
+            "accepted": [
+              "n+1",
+              "n + 1"
+            ]
+          }
+        ]
+      },
+      "explanation": "除根结点外每个结点均被一个双亲指针指向，故非空指针域有 n - 1 个，空指针域为 2n - (n - 1) = n + 1 个。",
+      "sourceRef": "自编-CH06-KP01-3"
+    },
+    {
+      "sourceQuestionNo": "M11-CH06-KP03-01",
+      "knowledgePointId": "13",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "将一棵普通树 T 转换为对应的二叉树 B（采用孩子-兄弟表示法），则树 T 中某个非叶子结点没有右兄弟时，在二叉树 B 中该结点（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "没有左孩子"
+          },
+          {
+            "key": "B",
+            "text": "没有右孩子"
+          },
+          {
+            "key": "C",
+            "text": "既是左孩子又是右孩子"
+          },
+          {
+            "key": "D",
+            "text": "一定是叶子结点"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "孩子-兄弟表示法中，左指针指向第一个孩子，右指针指向下一个兄弟；没有右兄弟则在二叉树 B 中右指针为空（无右孩子）。",
+      "sourceRef": "自编-CH06-KP03-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH06-KP03-02",
+      "knowledgePointId": "13",
+      "type": "FILL",
+      "maxScore": 2,
+      "content": {
+        "stem": "已知叶子结点权值集合为 {2, 3, 5, 7, 11}，由其构造的哈夫曼树的带权路径长度（WPL）为{{blank}}。"
+      },
+      "answer": {
+        "blanks": [
+          {
+            "accepted": [
+              "60"
+            ]
+          }
+        ]
+      },
+      "explanation": "合并过程：2+3=5，5+5=10，7+10=17，11+17=28；WPL = 5 + 10 + 17 + 28 = 60。",
+      "sourceRef": "自编-CH06-KP03-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH08-KP02-01",
+      "knowledgePointId": "21",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "在一棵 3 阶 B-树（所有叶子结点在同一层）中，若树高为 3（含 3 层关键字结点），则该 B-树最少和最多分别包含（  ）个关键字。",
+        "options": [
+          {
+            "key": "A",
+            "text": "7 和 26"
+          },
+          {
+            "key": "B",
+            "text": "7 和 27"
+          },
+          {
+            "key": "C",
+            "text": "6 和 26"
+          },
+          {
+            "key": "D",
+            "text": "8 和 26"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "A"
+      },
+      "explanation": "3 阶 B-树每个结点最少 1 个关键字（2 个分支）、最多 2 个关键字（3 个分支）。高度为 3 时，最少关键字数为 1 + 2 + 4 = 7；最多为 2 + 6 + 18 = 26。",
+      "sourceRef": "自编-CH08-KP02-1"
+    },
+    {
+      "sourceQuestionNo": "M11-CH08-KP02-02",
+      "knowledgePointId": "21",
+      "type": "CHOICE",
+      "maxScore": 2,
+      "content": {
+        "stem": "在平衡二叉树（AVL 树）中删除一个结点后，以下关于平衡调整的说法正确的是（  ）。",
+        "options": [
+          {
+            "key": "A",
+            "text": "最多只需进行一次单旋或双旋即可恢复整棵树的平衡"
+          },
+          {
+            "key": "B",
+            "text": "可能需要沿着从被删结点到根结点的路径进行多次旋转"
+          },
+          {
+            "key": "C",
+            "text": "删除操作绝对不会引起祖先结点的平衡因子发生变化"
+          },
+          {
+            "key": "D",
+            "text": "AVL 树删除结点后只需更新高度，无需旋转"
+          }
+        ]
+      },
+      "answer": {
+        "correctOption": "B"
+      },
+      "explanation": "AVL 树插入失衡最多只需一次（单旋或双旋）调整；但删除使子树高度减 1，可能向上传播并导致路径上多个祖先结点依次失衡，需多次旋转。",
+      "sourceRef": "自编-CH08-KP02-2"
+    },
+    {
+      "sourceQuestionNo": "M11-CH08-KP02-03",
+      "knowledgePointId": "21",
+      "type": "ALGORITHM",
+      "maxScore": 7,
+      "content": {
+        "stem": "已知二叉排序树（BST）结点定义为 `typedef struct BSTNode { int key; struct BSTNode *left, *right; } BSTNode;`。请编写 C/C++ 函数 `int isValidBST(BSTNode *root)`，判断以 `root` 为根的二叉树是否满足严格二叉排序树性质（左子树所有节点均 < 根，右子树所有节点均 > 根），是返回 1，否则返回 0。"
+      },
+      "answer": {
+        "referenceAnswer": "int checkBST(BSTNode *node, long long minVal, long long maxVal) {\n    if (node == NULL) return 1;\n    if (node->key <= minVal || node->key >= maxVal) return 0;\n    return checkBST(node->left, minVal, node->key) &&\n           checkBST(node->right, node->key, maxVal);\n}\nint isValidBST(BSTNode *root) {\n    return checkBST(root, -2147483649LL, 2147483648LL);\n}"
+      },
+      "rubric": {
+        "items": [
+          {
+            "score": 2,
+            "criterion": "空树返回 1，避免仅比较直接左右孩子而忽略跨层约束"
+          },
+          {
+            "score": 3,
+            "criterion": "通过上下界参数 (minVal, maxVal) 约束整棵左右子树的值域"
+          },
+          {
+            "score": 2,
+            "criterion": "递归校验左右子树并返回 1 或 0"
+          }
+        ]
+      },
+      "explanation": "仅比较 root->left->key < root->key 是常见错误，必须传递合法值域区间 (minVal, maxVal) 向下递归校验。",
+      "sourceRef": "自编-CH08-KP02-3"
+    }
+  ],
+  "materials": []
+}

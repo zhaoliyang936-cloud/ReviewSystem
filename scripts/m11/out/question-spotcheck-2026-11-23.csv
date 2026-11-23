@@ -1,0 +1,21 @@
+questionNo,type,sourceRef,verdict,note
+DS-000155,CHOICE,自编-CH04-KP01-2,ok,14*15/2-3=102；选项与解析一致
+DS-000159,SHORT_ANSWER,自编-CH04-KP01-6,ok,三种存储对比及块大小权衡，评分项2+2+2+2=8
+DS-000161,CHOICE,自编-CH04-KP02-2,ok,ababaab的1-based next数组0,1,1,2,3,4,2验算无误
+DS-000165,ALGORITHM,自编-CH04-KP02-6,ok,KMP函数含边界处理与next构造，评分项1+3+3=7
+DS-000167,CHOICE,自编-CH05-KP02-2,ok,GetHead(GetTail(GetHead(GetTail(A))))=c验算无误
+DS-000171,SHORT_ANSWER,自编-CH05-KP02-6,ok,头尾链表tag/hp/tp及O(1)表尾原因，评分项2+3+3=8
+DS-000175,ALGORITHM,自编-CH02-KP01-4,ok,原地O(n)删除[s,t]双指针实现正确，评分项2+3+2=7
+DS-000179,SHORT_ANSWER,自编-CH07-KP03-4,ok,Prim与Kruskal选边顺序及总权6验算无误
+DS-000180,CHOICE,自编-CH03-KP03-1,ok,(2-5+8)%8=5验算无误
+DS-000184,FILL,自编-CH03-KP02-2,ok,后缀表达式6+((2-3)*4)-(8/2)=-2验算无误
+DS-000186,CHOICE,自编-CH03-KP01-1,ok,卡特兰数C(8,4)/5=14验算无误
+DS-000189,CHOICE,自编-CH05-KP01-1,ok,6阶上三角矩阵A[3][5]下标6+5+2=13验算无误
+DS-000194,ALGORITHM,自编-CH07-KP02-3,ok,DFS统计无向图连通分量实现完整，评分项2+3+2=7
+DS-000197,SHORT_ANSWER,自编-CH09-KP03-3,ok,LSD基数排序三趟结果与稳定性解释准确
+DS-000200,SHORT_ANSWER,自编-CH07-KP04-3,ok,多关键路径分析全面，评分项2+3+3=8
+DS-000204,SHORT_ANSWER,自编-CH08-KP03-2,ok,线性探测地址3,4,5,6,7及ASL=9/5=1.8验算无误
+DS-000207,CHOICE,自编-CH01-KP02-1,ok,1+2+...+2^k=O(n)经典复杂度验算无误
+DS-000226,CHOICE,自编-CH06-KP01-1,ok,n=100完全二叉树n0=50,n1=1验算无误
+DS-000230,FILL,自编-CH06-KP03-2,ok,哈夫曼树WPL=5+10+17+28=60验算无误
+DS-000231,CHOICE,自编-CH08-KP02-1,ok,3阶B-树高3最少7最多26关键字验算无误
