@@ -40,7 +40,7 @@ if (Test-Path $EnvFile) {
     }
 }
 
-$AiEnabled = [bool]$env:AI_API_KEY
+$AiEnabled = ($env:AI_ENABLED -eq 'true') -and [bool]$env:AI_API_KEY
 $Steps = New-Object System.Collections.Generic.List[object]
 $RunSw = [System.Diagnostics.Stopwatch]::StartNew()
 
@@ -286,8 +286,8 @@ try {
     $pCreate = Invoke-Api $sessA "POST" "/api/practices" @{ knowledgeIds = @("1","4","10","13","15","21"); questionCount = 10 }
     $practice = $pCreate.Body
     if ($pCreate.Status -eq 202 -and $practice.id) {
-        for ($w = 0; $w -lt 20; $w++) {
-            Start-Sleep -Milliseconds 300
+        for ($w = 0; $w -lt 180; $w++) {
+            Start-Sleep -Milliseconds 500
             $poll = Invoke-Api $sessA "GET" "/api/practices/$($practice.id)"
             $practice = $poll.Body
             if ($practice.status -ne "PREPARING") { break }
@@ -331,11 +331,12 @@ try {
     $sw.Stop()
     Add-StepResult -Step "5_submit_practice_with_png" "start + upload PNG + submit" "200/201/200" "start=$($stRes.Status),up=$($upRes.Status),sub=$($subRes.Status),wrongQ=$wrongTargetQId" -Status $(if($s5ok){"pass"}else{"fail"}) -Ms $sw.ElapsedMilliseconds
 
-    # Wait for async mastery event processing (updating=false)
-    for ($w = 0; $w -lt 30; $w++) {
+    # Wait for async mastery event processing (updating=false & rs_change_event DONE)
+    for ($w = 0; $w -lt 180; $w++) {
+        $pendingEv = [int](Invoke-Psql "SELECT count(*) FROM rs_change_event WHERE state <> 'DONE';")
         $mPoll = Invoke-Api $sessA "GET" "/api/review/mastery?size=1"
-        if ($mPoll.Body -and $mPoll.Body.items.Count -gt 0 -and $mPoll.Body.items[0].updating -eq $false) { break }
-        Start-Sleep -Milliseconds 300
+        if ($pendingEv -eq 0 -and $mPoll.Body -and $mPoll.Body.items.Count -gt 0 -and $mPoll.Body.items[0].updating -eq $false) { break }
+        Start-Sleep -Milliseconds 500
     }
 
     # Step 6: Check rs_practice_item.result_json, rs_evidence, rs_wrong_question
@@ -374,11 +375,12 @@ try {
             Invoke-Api $sessA "POST" "/api/practices/$($redoP.id)/start" | Out-Null
             $redoAns = Get-AnswerForQuestion ([long]$redoP.items[0].questionVersionId) $redoP.items[0].type $true
             Invoke-Api $sessA "POST" "/api/practices/$($redoP.id)/submit" @{ answers = @(@{ itemId = $redoP.items[0].id; answer = $redoAns; assetIds = @() }) } | Out-Null
-            # Wait for async mastery event processing (updating=false)
-    for ($w = 0; $w -lt 30; $w++) {
+            # Wait for async mastery event processing (updating=false & rs_change_event DONE)
+    for ($w = 0; $w -lt 180; $w++) {
+        $pendingEv = [int](Invoke-Psql "SELECT count(*) FROM rs_change_event WHERE state <> 'DONE';")
         $mPoll = Invoke-Api $sessA "GET" "/api/review/mastery?size=1"
-        if ($mPoll.Body -and $mPoll.Body.items.Count -gt 0 -and $mPoll.Body.items[0].updating -eq $false) { break }
-        Start-Sleep -Milliseconds 300
+        if ($pendingEv -eq 0 -and $mPoll.Body -and $mPoll.Body.items.Count -gt 0 -and $mPoll.Body.items[0].updating -eq $false) { break }
+        Start-Sleep -Milliseconds 500
     }
     $wqAfter = Invoke-Api $sessA "GET" "/api/wrong-questions/$($objWq.id)"
             $s8ok = ($wqAfter.Status -eq 200 -and $wqAfter.Body.status -eq "MASTERED" -and $null -ne $wqAfter.Body.masteredAt)
@@ -390,9 +392,75 @@ try {
     $sw.Stop()
     Add-StepResult -Step "8_wrong_question_redo_mastered" "POST /api/wrong-questions/{id}/redo + submit correct" "status=MASTERED, masteredAt!=null" $s8Actual -Status $(if($s8ok){"pass"}else{"fail"}) -Ms $sw.ElapsedMilliseconds
 
-    # Step 9: AI Variant (skipped if AI_ENABLED=false)
+    # Step 9: AI Variant
     if (-not $AiEnabled) {
         Add-StepResult -Step "9_ai_variant_cycle" "POST /api/wrong-questions/{id}/variant" "AI variant generated & wrong redo creates linked wrong_question" "AI_API_KEY unavailable; degraded to AI_ENABLED=false" -Status "skipped" -Ms 0
+    } else {
+        $sw.Restart()
+        # Ensure A has a fresh PENDING objective wrong question for variant generation
+        $p9Create = Invoke-Api $sessA "POST" "/api/practices" @{ knowledgeIds = @("4"); questionCount = 2 }
+        $p9 = $p9Create.Body
+        if ($p9 -and $p9.status -eq "PREPARING") {
+            for ($w = 0; $w -lt 180; $w++) {
+                Start-Sleep -Milliseconds 500
+                $p9 = (Invoke-Api $sessA "GET" "/api/practices/$($p9.id)").Body
+                if ($p9.status -ne "PREPARING") { break }
+            }
+        }
+        Invoke-Api $sessA "POST" "/api/practices/$($p9.id)/start" | Out-Null
+        $p9Ans = @()
+        $p9TargetQId = $null
+        foreach ($it in $p9.items) {
+            $wantR = $true
+            if ($it.type -in @("CHOICE","FILL") -and -not $p9TargetQId) { $wantR = $false; $p9TargetQId = $it.questionId }
+            $p9Ans += @{ itemId = [string]$it.id; answer = (Get-AnswerForQuestion ([long]$it.questionVersionId) $it.type $wantR); assetIds = @() }
+        }
+        Invoke-Api $sessA "POST" "/api/practices/$($p9.id)/submit" @{ answers = $p9Ans } | Out-Null
+        for ($w = 0; $w -lt 30; $w++) {
+            $mPoll = Invoke-Api $sessA "GET" "/api/review/mastery?size=1"
+            if ($mPoll.Body -and $mPoll.Body.items.Count -gt 0 -and $mPoll.Body.items[0].updating -eq $false) { break }
+            Start-Sleep -Milliseconds 300
+        }
+        $wq9 = ((Invoke-Api $sessA "GET" "/api/wrong-questions").Body.items | Where-Object { $_.questionId -eq $p9TargetQId } | Select-Object -First 1)
+        $varJob = $null
+        for ($tryV = 0; $tryV -lt 2; $tryV++) {
+            $targetWqForVar = if ($tryV -eq 0) { $wq9 } else {
+                ((Invoke-Api $sessA "GET" "/api/wrong-questions").Body.items | Where-Object { $_.status -eq "PENDING" -and $_.id -ne $wq9.id } | Select-Object -First 1)
+            }
+            if (-not $targetWqForVar) { break }
+            $wq9 = $targetWqForVar
+            $varJobRes = Invoke-Api $sessA "POST" "/api/wrong-questions/$($wq9.id)/variant" @{}
+            $varJobId = $varJobRes.Body.jobId
+            if (-not $varJobId) { continue }
+            for ($w = 0; $w -lt 180; $w++) {
+                Start-Sleep -Milliseconds 500
+                $varJob = (Invoke-Api $sessA "GET" "/api/review/ai/jobs/$varJobId").Body
+                if ($varJob.state -in @("SUCCEEDED","FAILED","EXPIRED")) { break }
+            }
+            if ($varJob.state -eq "SUCCEEDED") { break }
+        }
+        $varQId = if ($varJob -and $varJob.output) { $varJob.output.questionId } else { $null }
+        $varPracId = if ($varJob -and $varJob.output) { $varJob.output.practiceId } else { $null }
+        $varDbInfo = if ($varQId) { Invoke-Psql "SELECT origin || ',' || COALESCE(origin_question_version_id::text,'') FROM rs_question WHERE id=$varQId;" } else { "" }
+        $linkedWqId = ""
+        if ($varPracId -and $varQId) {
+            $vp = (Invoke-Api $sessA "GET" "/api/practices/$varPracId").Body
+            Invoke-Api $sessA "POST" "/api/practices/$varPracId/start" | Out-Null
+            $vAns = @()
+            foreach ($vit in $vp.items) {
+                $vAns += @{ itemId = [string]$vit.id; answer = (Get-AnswerForQuestion ([long]$vit.questionVersionId) $vit.type $false); assetIds = @() }
+            }
+            Invoke-Api $sessA "POST" "/api/practices/$varPracId/submit" @{ answers = $vAns } | Out-Null
+            for ($w = 0; $w -lt 30; $w++) {
+                $mPoll = Invoke-Api $sessA "GET" "/api/review/mastery?size=1"
+                if ($mPoll.Body -and $mPoll.Body.items.Count -gt 0 -and $mPoll.Body.items[0].updating -eq $false) { break }
+                Start-Sleep -Milliseconds 300
+            }
+            $linkedWqId = Invoke-Psql "SELECT COALESCE(origin_wrong_question_id::text,'') FROM rs_wrong_question WHERE user_id=$uidA AND question_id=$varQId;"
+        }
+        $s9ok = ($varJob.state -eq "SUCCEEDED" -and $varDbInfo -match "^AI_GENERATED,\d+" -and $linkedWqId -eq [string]$wq9.id)
+        $sw.Stop()
+        Add-StepResult -Step "9_ai_variant_cycle" "POST /api/wrong-questions/{id}/variant + wrong submit" "SUCCEEDED, origin=AI_GENERATED, origin_wrong_question_id=$($wq9.id)" "state=$($varJob.state),err=$($varJob.errorCode),varQ=$varQId,db=$varDbInfo,linkedWq=$linkedWqId" -Sql "SELECT origin,origin_question_version_id / origin_wrong_question_id" -SqlResult "varQ=$varQId,db=$varDbInfo,linkedWq=$linkedWqId" -Status $(if($s9ok){"pass"}else{"fail"}) -Ms $sw.ElapsedMilliseconds
     }
 
     # Step 10: Recommendations + create review task
@@ -402,7 +470,14 @@ try {
     $hasReason = ($null -ne $firstRec -and $null -ne $firstRec.reason)
     $taskCreate = Invoke-Api $sessA "POST" "/api/review/tasks" @{ questionCount = 5 }
     $task = $taskCreate.Body
-    $s10ok = ($recRes.Status -eq 200 -and $hasReason -and $taskCreate.Status -in @(201,202) -and $task.items.Count -ge 1)
+    if ($taskCreate.Status -eq 202 -and $task -and $task.id) {
+        for ($w = 0; $w -lt 180; $w++) {
+            Start-Sleep -Milliseconds 500
+            $task = (Invoke-Api $sessA "GET" "/api/review/tasks/$($task.id)").Body
+            if ($task.status -ne "PREPARING") { break }
+        }
+    }
+    $s10ok = ($recRes.Status -eq 200 -and $hasReason -and $taskCreate.Status -in @(201,202) -and $task.status -eq "READY" -and $task.items.Count -ge 1)
     $sw.Stop()
     Add-StepResult -Step "10_recommendations_and_task_create" "GET /api/review/recommendations + POST /api/review/tasks" "200 with reason + task created" "rec=$($recRes.Status),hasReason=$hasReason,task=$($taskCreate.Status),items=$($task.items.Count),err=$($taskCreate.Raw)" -Status $(if($s10ok){"pass"}else{"fail"}) -Ms $sw.ElapsedMilliseconds
 
@@ -427,14 +502,63 @@ try {
     $sw.Stop()
     Add-StepResult -Step "11_submit_task_mastery_snapshot" "POST /api/review/tasks/{id}/submit" "200 + snapshot count increased" "sub=$($tSub.Status),before=$snapBefore,after=$snapAfter" -Sql "SELECT count(*) FROM rs_mastery_snapshot" -SqlResult "before=$snapBefore,after=$snapAfter,latest=$snapSample" -Status $(if($s11ok){"pass"}else{"fail"}) -Ms $sw.ElapsedMilliseconds
 
-    # Step 12: AI Guidance (skipped if AI_ENABLED=false)
+    # Step 12: AI Guidance
     if (-not $AiEnabled) {
         Add-StepResult -Step "12_ai_guidance_job" "POST /api/review/ai/jobs (GUIDANCE)" "SUCCEEDED with citations>=1" "AI_API_KEY unavailable; degraded to AI_ENABLED=false" -Status "skipped" -Ms 0
+    } else {
+        $sw.Restart()
+        $gRes = Invoke-Api $sessA "POST" "/api/review/ai/jobs" @{ scenario = "GUIDANCE"; knowledgeId = "1" }
+        $gJobId = if ($gRes.Body) { $gRes.Body.jobId } else { $null }
+        $gJob = $null
+        if ($gJobId) {
+            for ($w = 0; $w -lt 180; $w++) {
+                Start-Sleep -Milliseconds 500
+                $gJob = (Invoke-Api $sessA "GET" "/api/review/ai/jobs/$gJobId").Body
+                if ($gJob.state -in @("SUCCEEDED","FAILED","EXPIRED")) { break }
+            }
+        }
+        $citCnt = if ($gJob -and $gJob.citations) { @($gJob.citations).Count } elseif ($gJob -and $gJob.output -and $gJob.output.citations) { @($gJob.output.citations).Count } else { 0 }
+        $s12ok = ($gRes.Status -in @(200,202) -and $null -ne $gJob -and $gJob.state -eq "SUCCEEDED" -and $citCnt -ge 1)
+        $sw.Stop()
+        Add-StepResult -Step "12_ai_guidance_job" "POST /api/review/ai/jobs (GUIDANCE)" "SUCCEEDED with citations>=1" "http=$($gRes.Status),job=$gJobId,state=$($gJob.state),err=$($gJob.errorCode),citations=$citCnt,raw=$($gRes.Raw)" -Status $(if($s12ok){"pass"}else{"fail"}) -Ms $sw.ElapsedMilliseconds
     }
 
-    # Step 13: Cross-account AI (skipped if AI_ENABLED=false)
+    # Step 13: Cross-account AI
     if (-not $AiEnabled) {
         Add-StepResult -Step "13_cross_account_ai_question" "B recommendations include A's AI question" "B draws & grades AI question" "AI_API_KEY unavailable; degraded to AI_ENABLED=false" -Status "skipped" -Ms 0
+    } else {
+        $sw.Restart()
+        $aAiIds = @(Invoke-Psql "SELECT q.id FROM rs_question q JOIN rs_ai_job j ON j.id=q.gen_job_id WHERE q.origin='AI_GENERATED' AND q.status='ACTIVE' AND j.user_id=$uidA;") -split "`n" | Where-Object { $_ -match '^\d+$' }
+        $aiRow = (Invoke-Psql "SELECT q.id || ',' || v.knowledge_point_id FROM rs_question q JOIN rs_question_version v ON v.id=q.current_version_id JOIN rs_ai_job j ON j.id=q.gen_job_id WHERE q.origin='AI_GENERATED' AND q.status='ACTIVE' AND j.user_id=$uidA ORDER BY q.id DESC LIMIT 1;").Split(",")
+        $targetAiQId = $aiRow[0]; $targetAiKpId = $aiRow[1]
+        $bPracRes = Invoke-Api $sessB "POST" "/api/practices" @{ knowledgeIds = @($targetAiKpId); questionCount = 20 }
+        $bPrac = $bPracRes.Body
+        if ($bPrac -and $bPrac.status -eq "PREPARING") {
+            for ($w = 0; $w -lt 180; $w++) {
+                Start-Sleep -Milliseconds 500
+                $bPrac = (Invoke-Api $sessB "GET" "/api/practices/$($bPrac.id)").Body
+                if ($bPrac.status -ne "PREPARING") { break }
+            }
+        }
+        $aiHit = $bPrac.items | Where-Object { $_.questionId -in $aAiIds } | Select-Object -First 1
+        $bGraded = $false
+        if ($aiHit) {
+            Invoke-Api $sessB "POST" "/api/practices/$($bPrac.id)/start" | Out-Null
+            $bAns = @()
+            foreach ($bit in $bPrac.items) {
+                $bAns += @{ itemId = [string]$bit.id; answer = (Get-AnswerForQuestion ([long]$bit.questionVersionId) $bit.type $true); assetIds = @() }
+            }
+            $bSub = Invoke-Api $sessB "POST" "/api/practices/$($bPrac.id)/submit" @{ answers = $bAns }
+            if ($bSub.Status -eq 200) {
+                $bResItem = $bSub.Body.items | Where-Object { $_.itemId -eq $aiHit.id } | Select-Object -First 1
+                if ($null -ne $bResItem -and $null -ne $bResItem.result.passed) { $bGraded = $true }
+            }
+        } elseif ($bPrac -and $bPrac.id) {
+            Invoke-Api $sessB "POST" "/api/practices/$($bPrac.id)/cancel" | Out-Null
+        }
+        $s13ok = ($null -ne $aiHit -and $bGraded)
+        $sw.Stop()
+        Add-StepResult -Step "13_cross_account_ai_question" "B draws & grades A's AI question" "hit=true, graded=true" "targetAiQ=$targetAiQId,kp=$targetAiKpId,hitQ=$($aiHit.questionId),graded=$bGraded" -Status $(if($s13ok){"pass"}else{"fail"}) -Ms $sw.ElapsedMilliseconds
     }
 
     # Step 14: 3 accounts report SUSPECTED_ERROR on same question -> review case -> filter -> resolve -> back
@@ -448,7 +572,14 @@ try {
     $fbQId = $fbQ.Body.id
     $fbQNo = $fbQ.Body.questionNo
     foreach ($sess in @($sessA, $sessB, $sessC)) {
-        $pr = (Invoke-Api $sess "POST" "/api/practices" @{ knowledgeIds = @($kpId); questionCount = 5 }).Body
+        $pr = (Invoke-Api $sess "POST" "/api/practices" @{ knowledgeIds = @($kpId); questionCount = 10 }).Body
+        if ($pr -and $pr.status -eq "PREPARING") {
+            for ($w = 0; $w -lt 180; $w++) {
+                Start-Sleep -Milliseconds 500
+                $pr = (Invoke-Api $sess "GET" "/api/practices/$($pr.id)").Body
+                if ($pr.status -ne "PREPARING") { break }
+            }
+        }
         Invoke-Api $sess "POST" "/api/practices/$($pr.id)/start" | Out-Null
         $pAns = @()
         $targetWqId = $null
@@ -491,6 +622,13 @@ try {
         $parts = $row.Split(",")
         $sqId = $parts[0]; $skpId = $parts[1]; $sqType = $parts[2]; $sqVer = [long]$parts[3]
         $sp = (Invoke-Api $sessB "POST" "/api/practices" @{ knowledgeIds = @($skpId); questionCount = 10 }).Body
+        if ($sp -and $sp.status -eq "PREPARING") {
+            for ($w = 0; $w -lt 180; $w++) {
+                Start-Sleep -Milliseconds 500
+                $sp = (Invoke-Api $sessB "GET" "/api/practices/$($sp.id)").Body
+                if ($sp.status -ne "PREPARING") { break }
+            }
+        }
         $hit = $sp.items | Where-Object { $_.questionId -eq $sqId } | Select-Object -First 1
         if ($hit) {
             $drawnOk++

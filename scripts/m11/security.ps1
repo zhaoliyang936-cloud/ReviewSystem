@@ -365,12 +365,14 @@ try {
     $r4 = Invoke-Api $sessA "POST" "/api/wrong-questions/$($bWq.id)/variant"
     Add-MatrixRow "SEC-04" "越权" "A调B变式" "404" "$($r4.Status)" ($r4.Status -eq 404) "" "scripts/m11/security.ps1"
 
-    $genBefore = Invoke-Psql "SELECT COALESCE((SELECT used_calls FROM rs_ai_quota WHERE scope_key='user:${uidA}:GENERATED_OR_REVIEWED' AND budget_date=CURRENT_DATE),0);"
+    Invoke-Psql "INSERT INTO rs_ai_quota(scope_key,budget_date,used_calls,reserved_cost,actual_cost) VALUES ('user:${uidA}:GENERATED_OR_REVIEWED',CURRENT_DATE,5,0,0) ON CONFLICT (scope_key,budget_date) DO UPDATE SET used_calls=5;" | Out-Null
+    $genBefore = Invoke-Psql "SELECT used_calls FROM rs_ai_quota WHERE scope_key='user:${uidA}:GENERATED_OR_REVIEWED' AND budget_date=CURRENT_DATE;"
+    if ([int]$genBefore -ne 5) { throw "SEC-24 baseline not seeded: genBefore=$genBefore" }
     Invoke-Psql "INSERT INTO rs_ai_quota(scope_key,budget_date,used_calls,reserved_cost,actual_cost) VALUES ('user:${uidA}:TUTORING',CURRENT_DATE,20,0,0) ON CONFLICT (scope_key,budget_date) DO UPDATE SET used_calls=20;" | Out-Null
     $qJob = Invoke-Api $sessA "POST" "/api/review/ai/jobs" @{ scenario = "GUIDANCE"; knowledgeId = "1" }
-    $genAfter = Invoke-Psql "SELECT COALESCE((SELECT used_calls FROM rs_ai_quota WHERE scope_key='user:${uidA}:GENERATED_OR_REVIEWED' AND budget_date=CURRENT_DATE),0);"
-    $qOk = ($qJob.Status -eq 409 -and $qJob.Raw -match "AI_QUOTA_EXCEEDED" -and $genBefore -eq $genAfter)
-    Add-MatrixRow "SEC-24" "配额" "TUTORING=20触发409且GENERATED_OR_REVIEWED不变" "409 AI_QUOTA_EXCEEDED, gen=$genBefore" "status=$($qJob.Status),genBefore=$genBefore,genAfter=$genAfter" $qOk $qJob.Raw "scripts/m11/security.ps1"
+    $genAfter = Invoke-Psql "SELECT used_calls FROM rs_ai_quota WHERE scope_key='user:${uidA}:GENERATED_OR_REVIEWED' AND budget_date=CURRENT_DATE;"
+    $qOk = ($qJob.Status -eq 409 -and $qJob.Raw -match "AI_QUOTA_EXCEEDED" -and [int]$genBefore -eq 5 -and [int]$genAfter -eq [int]$genBefore)
+    Add-MatrixRow "SEC-24" "配额" "TUTORING=20触发409且GENERATED_OR_REVIEWED不变" "409 AI_QUOTA_EXCEEDED, gen=5->5" "status=$($qJob.Status),genBefore=$genBefore,genAfter=$genAfter" $qOk $qJob.Raw "scripts/m11/security.ps1"
 
     # 10. Session (logout -> 401; disabled -> login rejected)
     $oldSession = $sessA.Cookies
