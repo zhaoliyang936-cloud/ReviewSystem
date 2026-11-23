@@ -9,3 +9,4 @@ frontend/dist/
 .codex/
 学习资料/
 import-report-*.json
+.workbuddy/
