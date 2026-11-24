@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api'
+import { formatAnswer } from '../format'
 import AiTutoringPanel from '../ai/AiTutoringPanel.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
@@ -133,28 +134,11 @@ function score(v) {
 }
 
 function myAnswer(item) {
-  const v = item.submittedAnswer
-  if (v == null) return '未作答'
-  if (item.type === 'CHOICE') return v.selectedOption || '未作答'
-  if (item.type === 'FILL') {
-    const b = v.blanks || []
-    return b.length ? b.map((x, i) => `第 ${i + 1} 空：${x || '（空）'}`).join('；') : '未作答'
-  }
-  const parts = []
-  if (v.text) parts.push(v.text)
-  if (v.code) parts.push('代码：\n' + v.code)
-  return parts.length ? parts.join('\n\n') : '未作答'
+  return formatAnswer(item.submittedAnswer, item.type, 'mine')
 }
 
 function referenceAnswer(item) {
-  const v = item.correctAnswer
-  if (v == null) return '—'
-  if (item.type === 'CHOICE') return v.correctOption || '—'
-  if (item.type === 'FILL') {
-    const b = v.blanks || []
-    return b.map((x, i) => `第 ${i + 1} 空：${(x.accepted || []).join(' / ') || '—'}`).join('；')
-  }
-  return v.referenceAnswer || JSON.stringify(v)
+  return formatAnswer(item.correctAnswer, item.type, 'reference')
 }
 </script>
 

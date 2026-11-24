@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api'
+import { formatAnswer } from '../format'
 import AiTutoringPanel from '../ai/AiTutoringPanel.vue'
 import BaseButton from '../components/BaseButton.vue'
 import BaseCard from '../components/BaseCard.vue'
@@ -68,11 +69,6 @@ function pillTone(item) {
 
 function score(value) {
   return value == null ? '—' : Number(value).toFixed(1)
-}
-
-function display(value) {
-  if (value == null) return '—'
-  return typeof value === 'object' ? JSON.stringify(value) : String(value)
 }
 
 async function requestExplanation(item) {
@@ -189,8 +185,8 @@ onMounted(load)
           得分：{{ score(item.result.raw_score) }} / {{ score(item.result.max_score) }} · 归一化：{{ score(item.result.normalized_score) }} · 通过：{{ item.result.passed == null ? '—' : item.result.passed ? '是' : '否' }}
         </p>
 
-        <p><strong>我的答案：</strong>{{ display(item.submittedAnswer) }}</p>
-        <p><strong>参考答案：</strong>{{ display(item.correctAnswer) }}</p>
+        <p><strong>我的答案：</strong><span class="answer-text">{{ formatAnswer(item.submittedAnswer, item.type, 'mine') }}</span></p>
+        <p><strong>参考答案：</strong><span class="answer-text">{{ formatAnswer(item.correctAnswer, item.type, 'reference') }}</span></p>
         <p v-if="item.explanation"><strong>解析：</strong>{{ item.explanation }}</p>
 
         <div v-if="item.rubric" class="ui-mt-12">
@@ -268,5 +264,10 @@ onMounted(load)
   margin: var(--sp-12) 0;
   font-size: var(--fs-18);
   line-height: var(--lh-loose);
+}
+
+.answer-text {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>
