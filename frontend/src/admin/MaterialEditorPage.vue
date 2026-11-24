@@ -2,6 +2,12 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api'
+import BaseButton from '../components/BaseButton.vue'
+import BaseCard from '../components/BaseCard.vue'
+import BaseField from '../components/BaseField.vue'
+import StatusPill from '../components/StatusPill.vue'
+import TableShell from '../components/TableShell.vue'
+import { pushToast } from '../components/useToast'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,7 +28,6 @@ const loading = ref(false)
 const isNew = computed(() => !route.params.id)
 const statusLabels = { DRAFT: '草稿', PUBLISHED: '已发布', WITHDRAWN: '已撤回' }
 
-// Client-side preview matching backend MaterialChunkSplitter rules
 const previewChunks = computed(() => {
   const raw = (form.value.content || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
   if (!raw) return []
@@ -103,7 +108,7 @@ async function save() {
           content: form.value.content
         }
       })
-      notice.value = '草稿已创建'
+      pushToast('草稿已创建', 'success')
       await router.replace(`/admin/materials/${created.materialId}`)
     } else {
       const updated = await api(`/api/admin/materials/${detail.value.materialId}`, {
@@ -117,7 +122,7 @@ async function save() {
         }
       })
       detail.value = updated
-      notice.value = `已生成新版本 v${updated.latestVersion}（草稿）`
+      pushToast(`已生成新版本 v${updated.latestVersion}（草稿）`, 'success')
     }
   } catch (e) {
     error.value = e.message
@@ -180,118 +185,108 @@ onMounted(async () => {
 
 <template>
   <section>
-    <div class="page-head">
+    <div class="ui-page-head">
       <div>
-        <h2>{{ isNew ? '新建课程资料' : `资料详情 #${detail?.materialId || ''}` }}</h2>
-        <p class="muted">
+        <span class="ui-eyebrow">MATERIAL EDITOR</span>
+        <h1>{{ isNew ? '新建课程资料' : `资料详情 #${detail?.materialId || ''}` }}</h1>
+        <p class="ui-subtitle">
           {{ isNew ? '创建后为草稿状态，需填写来源位置并发布后才进入检索。' : '编辑保存将生成新的草稿版本，旧版本不可变。' }}
         </p>
       </div>
-      <RouterLink class="secondary link-btn" to="/admin/materials">返回列表</RouterLink>
+      <BaseButton to="/admin/materials" variant="secondary">返回列表</BaseButton>
     </div>
 
-    <p v-if="notice" class="success">{{ notice }}</p>
-    <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="notice" class="ui-success ui-mb-12" role="status">{{ notice }}</p>
+    <p v-if="error" class="ui-error ui-mb-12" role="alert">{{ error }}</p>
 
-    <div v-if="detail?.publicationStatus === 'WITHDRAWN'" class="card withdrawn-banner">
+    <BaseCard v-if="detail?.publicationStatus === 'WITHDRAWN'" class="withdrawn-banner ui-mb-16">
       <strong>该资料当前处于已撤回状态</strong>
       <span>{{ detail.withdrawReason ? `撤回原因：${detail.withdrawReason}` : '检索已立即停止命中；如需重新启用，请编辑生成新版本并发布。' }}</span>
-    </div>
+    </BaseCard>
 
     <div class="editor-grid">
-      <form class="card grid" @submit.prevent="save">
+      <BaseCard tag="form" class="ui-grid" @submit.prevent="save">
         <div v-if="detail" class="status-bar">
-          <span class="badge">当前 v{{ detail.latestVersion }}</span>
-          <span :class="['badge', detail.publicationStatus === 'PUBLISHED' ? 'active' : '']">
+          <StatusPill tone="neutral" class="ui-num">当前 v{{ detail.latestVersion }}</StatusPill>
+          <StatusPill :tone="detail.publicationStatus === 'PUBLISHED' ? 'success' : 'warn'">
             {{ statusLabels[detail.publicationStatus] || detail.publicationStatus }}
-          </span>
-          <span
-            v-if="detail.publishedVersion && detail.publishedVersion !== detail.latestVersion"
-            class="badge live"
-          >
+          </StatusPill>
+          <StatusPill v-if="detail.publishedVersion && detail.publishedVersion !== detail.latestVersion" tone="brand">
             线上生效 v{{ detail.publishedVersion }}
-          </span>
+          </StatusPill>
         </div>
 
-        <label class="field">
-          标题
-          <input v-model="form.title" maxlength="200" required placeholder="例如：二叉树的遍历性质" />
-        </label>
+        <BaseField v-slot="{ id }" label="标题">
+          <input :id="id" v-model="form.title" maxlength="200" required placeholder="例如：二叉树的遍历性质" />
+        </BaseField>
 
-        <label class="field">
-          所属知识点
-          <select v-model="form.knowledgeId" required>
+        <BaseField v-slot="{ id }" label="所属知识点">
+          <select :id="id" v-model="form.knowledgeId" required>
             <option value="" disabled>请选择知识点</option>
             <option v-for="p in points" :key="p.id" :value="p.id">{{ p.code }} · {{ p.name }}</option>
           </select>
-        </label>
+        </BaseField>
 
-        <label class="field">
-          来源位置（发布前必填，如 19A.pdf#p12）
-          <input v-model="form.sourceLabel" maxlength="300" placeholder="例如：教材第6章#p132 或 19A.pdf#p12" />
-        </label>
+        <BaseField v-slot="{ id }" label="来源位置（发布前必填，如 19A.pdf#p12）">
+          <input :id="id" v-model="form.sourceLabel" maxlength="300" placeholder="例如：教材第6章#p132 或 19A.pdf#p12" />
+        </BaseField>
 
-        <label class="field">
-          正文（空行分段，每段最多 1000 字符）
-          <textarea v-model="form.content" rows="12" required placeholder="输入知识点讲解正文..."></textarea>
-        </label>
+        <BaseField v-slot="{ id }" label="正文（空行分段，每段最多 1000 字符）">
+          <textarea :id="id" v-model="form.content" rows="12" required placeholder="输入知识点讲解正文..."></textarea>
+        </BaseField>
 
-        <div class="actions">
-          <button class="primary" type="submit">{{ isNew ? '保存草稿' : '编辑生成新版本' }}</button>
-          <button
-            v-if="detail && detail.publicationStatus === 'DRAFT'"
-            type="button"
-            class="primary"
-            @click="publish"
-          >
+        <div class="ui-actions">
+          <BaseButton type="submit" variant="primary">{{ isNew ? '保存草稿' : '编辑生成新版本' }}</BaseButton>
+          <BaseButton v-if="detail && detail.publicationStatus === 'DRAFT'" variant="primary" @click="publish">
             审核发布
-          </button>
+          </BaseButton>
         </div>
 
         <div v-if="detail && detail.publishedVersion != null" class="withdraw-box">
-          <label class="field">
-            撤回原因
-            <input v-model="withdrawReason" placeholder="输入撤回原因后点击撤回" />
-          </label>
-          <p class="muted note">
+          <BaseField v-slot="{ id }" label="撤回原因">
+            <input :id="id" v-model="withdrawReason" placeholder="输入撤回原因后点击撤回" />
+          </BaseField>
+          <p class="ui-muted note">
             撤回作用于线上生效版本 v{{ detail.publishedVersion }}；若存在更新的草稿，草稿会保留但不会上线。
           </p>
-          <button type="button" class="danger" @click="withdraw">撤回资料</button>
+          <div>
+            <BaseButton variant="danger" @click="withdraw">撤回资料</BaseButton>
+          </div>
         </div>
-      </form>
+      </BaseCard>
 
-      <div class="grid">
-        <div class="card">
-          <h3>右侧分段预览（{{ previewChunks.length }} 段）</h3>
-          <p class="muted note">前端实时预览按空行与 1000 字规则拆分，发布时以服务端实际拆段结果为准。</p>
-          <p v-if="!previewChunks.length" class="muted">输入正文后在此显示分段预览。</p>
+      <div class="ui-grid">
+        <BaseCard>
+          <h2 class="ui-h3 ui-mb-8">右侧分段预览（{{ previewChunks.length }} 段）</h2>
+          <p class="ui-muted note">前端实时预览按空行与 1000 字规则拆分，发布时以服务端实际拆段结果为准。</p>
+          <p v-if="!previewChunks.length" class="ui-muted">输入正文后在此显示分段预览。</p>
           <ol v-else class="chunk-list">
             <li v-for="(chunk, idx) in previewChunks" :key="idx">
               <div class="chunk-meta">
-                <span class="code">position={{ idx }}</span>
-                <span class="muted">{{ chunk.length }} 字符</span>
+                <span class="ui-code">position={{ idx }}</span>
+                <span class="ui-muted ui-num">{{ chunk.length }} 字符</span>
               </div>
               <pre>{{ chunk }}</pre>
             </li>
           </ol>
-        </div>
+        </BaseCard>
 
-        <div v-if="detail && detail.chunks?.length" class="card">
-          <h3>服务端已落库分段（{{ detail.chunks.length }} 段）</h3>
+        <BaseCard v-if="detail && detail.chunks?.length">
+          <h2 class="ui-h3 ui-mb-8">服务端已落库分段（{{ detail.chunks.length }} 段）</h2>
           <ol class="chunk-list">
             <li v-for="c in detail.chunks" :key="c.id">
               <div class="chunk-meta">
-                <span class="code">chunkId={{ c.id }} · position={{ c.position }}</span>
+                <span class="ui-code">chunkId={{ c.id }} · position={{ c.position }}</span>
               </div>
               <pre>{{ c.text }}</pre>
             </li>
           </ol>
-        </div>
+        </BaseCard>
 
-        <div v-if="detail && detail.versions?.length" class="card">
-          <h3>版本历史（不可变）</h3>
-          <table>
-            <thead>
+        <BaseCard v-if="detail && detail.versions?.length">
+          <h2 class="ui-h3">版本历史（不可变）</h2>
+          <TableShell :empty="!detail.versions.length" empty-title="暂无版本记录">
+            <template #head>
               <tr>
                 <th>版本</th>
                 <th>状态</th>
@@ -299,18 +294,20 @@ onMounted(async () => {
                 <th>创建时间</th>
                 <th>审核时间</th>
               </tr>
-            </thead>
-            <tbody>
-              <tr v-for="v in detail.versions" :key="v.id" :class="{ withdrawn: v.publicationStatus === 'WITHDRAWN' }">
-                <td class="code">v{{ v.version }}</td>
-                <td>{{ statusLabels[v.publicationStatus] || v.publicationStatus }}</td>
-                <td class="code">{{ v.sourceLabel || '—' }}</td>
-                <td>{{ formatTime(v.createdAt) }}</td>
-                <td>{{ formatTime(v.approvedAt) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            </template>
+            <tr
+              v-for="v in detail.versions"
+              :key="v.id"
+              :class="{ withdrawn: v.publicationStatus === 'WITHDRAWN' }"
+            >
+              <td class="ui-code ui-num">v{{ v.version }}</td>
+              <td>{{ statusLabels[v.publicationStatus] || v.publicationStatus }}</td>
+              <td class="ui-code">{{ v.sourceLabel || '—' }}</td>
+              <td class="ui-num">{{ formatTime(v.createdAt) }}</td>
+              <td class="ui-num">{{ formatTime(v.approvedAt) }}</td>
+            </tr>
+          </TableShell>
+        </BaseCard>
       </div>
     </div>
   </section>
@@ -320,73 +317,72 @@ onMounted(async () => {
 .editor-grid {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
-  gap: 18px;
+  gap: var(--sp-16);
   align-items: start;
 }
-.link-btn {
-  display: inline-block;
-  text-decoration: none;
-}
+
 .status-bar {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
 }
 
-.badge.live {
-  border-color: #4a4a4a;
-  color: #1a1a1a;
-  background: #f2f2f2;
-}
 .withdrawn-banner {
-  margin-bottom: 14px;
-  background: #f5f6f8;
-  border-color: #d5dae2;
-  color: #5c6678;
+  background: var(--bg-sub);
+  color: var(--ink-700);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-4);
 }
+
 .withdraw-box {
-  margin-top: 8px;
-  padding-top: 14px;
-  border-top: 1px solid #e8ebf0;
+  margin-top: var(--sp-8);
+  padding-top: var(--sp-16);
+  border-top: 1px solid var(--line);
   display: grid;
-  gap: 10px;
+  gap: var(--sp-12);
 }
+
 .note {
-  font-size: 13px;
+  font-size: var(--fs-13);
   margin-top: 0;
 }
+
 .chunk-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 10px;
+  gap: var(--sp-12);
 }
+
 .chunk-list li {
-  border: 1px solid #e5e9f0;
-  border-radius: 8px;
-  padding: 10px;
-  background: #fafbfc;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--sp-12);
+  background: var(--bg-sub);
 }
+
 .chunk-meta {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 6px;
-  font-size: 12px;
+  margin-bottom: var(--sp-8);
+  font-size: var(--fs-12);
 }
+
 .chunk-list pre {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
+
 tr.withdrawn {
   opacity: 0.6;
 }
-@media (max-width: 1000px) {
+
+@media (max-width: 1024px) {
   .editor-grid {
     grid-template-columns: 1fr;
   }

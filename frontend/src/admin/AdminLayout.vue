@@ -1,11 +1,256 @@
 <script setup>
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api'
-const me=ref(null), router=useRouter()
-onMounted(async()=>{try{me.value=await api('/api/me');if(me.value.role!=='ADMIN')router.replace('/')}catch{router.replace('/')}})
+import BaseButton from '../components/BaseButton.vue'
+
+const me = ref(null)
+const drawerOpen = ref(false)
+const router = useRouter()
+const route = useRoute()
+
+function closeDrawer() {
+  drawerOpen.value = false
+}
+
+function onKeydown(e) {
+  if (e.key === 'Escape' && drawerOpen.value) {
+    closeDrawer()
+  }
+}
+
+watch(() => route.fullPath, closeDrawer)
+
+onMounted(async () => {
+  window.addEventListener('keydown', onKeydown)
+  try {
+    me.value = await api('/api/me')
+    if (me.value.role !== 'ADMIN') router.replace('/')
+  } catch {
+    router.replace('/')
+  }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+})
 </script>
-<template><div class="admin-shell"><aside><div class="course-mark"><span>固定课程</span><strong>数据结构</strong><small>DATA_STRUCTURES</small></div><nav aria-label="管理导航"><RouterLink to="/admin/knowledge">章节与知识点</RouterLink><RouterLink to="/admin/questions">四类题库</RouterLink><RouterLink to="/admin/questions/new">录入题目</RouterLink><RouterLink to="/admin/materials">课程资料</RouterLink><RouterLink to="/admin/materials/search">检索预览</RouterLink><RouterLink to="/admin/coverage">覆盖统计</RouterLink><RouterLink to="/admin/review-cases">复核案件</RouterLink></nav><RouterLink class="back" to="/">← 返回首页</RouterLink></aside><main class="admin-main"><header><div><span class="eyebrow">M03 · 题库管理</span><h1>课程内容工作台</h1></div><span v-if="me" class="user">{{me.username}}</span></header><RouterView /></main></div></template>
-<style>
-:global(*){box-sizing:border-box}:global(body){margin:0;background:#f3f5f9;color:#172033;font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif}:global(button),:global(input),:global(select),:global(textarea){font:inherit}.admin-shell{min-height:100vh;display:grid;grid-template-columns:240px 1fr}aside{position:sticky;top:0;height:100vh;padding:30px 22px;background:#fff;border-right:1px solid #dfe4ec;display:flex;flex-direction:column}.course-mark{border-left:3px solid #286a64;padding-left:15px;margin-bottom:38px}.course-mark span,.course-mark small{display:block;color:#697386;font-size:12px}.course-mark strong{display:block;font-size:23px;margin:5px 0}.course-mark small{font-family:Consolas,monospace}nav{display:grid;gap:7px}nav a,.back{color:#4d596d;text-decoration:none;padding:11px 13px;border-radius:8px}nav a.router-link-active{background:#eaf3f2;color:#174e49;font-weight:700}.back{margin-top:auto}.admin-main{padding:28px 42px 60px;min-width:0}.admin-main>header{display:flex;justify-content:space-between;align-items:end;margin-bottom:25px}.eyebrow{font:12px Consolas,monospace;color:#286a64;letter-spacing:.08em}.admin-main h1{font-size:26px;margin:6px 0 0}.user{background:#fff;border:1px solid #dfe4ec;border-radius:99px;padding:7px 12px;font-size:13px}.card{background:#fff;border:1px solid #e0e5ed;border-radius:12px;padding:22px;box-shadow:0 6px 22px rgba(31,43,68,.04)}.page-head{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:16px}.page-head h2{margin:0}.muted{color:#697386}.primary,.secondary,.danger{border:0;border-radius:7px;padding:9px 14px;cursor:pointer}.primary{background:#286a64;color:white}.secondary{background:#edf0f5;color:#263248}.danger{background:#fae9e8;color:#9a302b}.field{display:grid;gap:6px}.field input,.field select,.field textarea{width:100%;border:1px solid #cfd6e1;border-radius:7px;padding:9px 10px;background:white}.field textarea{min-height:110px;resize:vertical}.grid{display:grid;gap:14px}.two{grid-template-columns:repeat(2,minmax(0,1fr))}.actions{display:flex;gap:8px;align-items:center}.error{color:#a02d28}.success{color:#286a64}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid #e8ebf0;vertical-align:top}th{font-size:12px;color:#697386}.code{font-family:Consolas,monospace;font-size:12px}.badge{display:inline-block;border-radius:99px;padding:3px 8px;background:#edf0f5;font-size:12px}.badge.active{background:#e5f2ee;color:#175a4f}@media(max-width:800px){.admin-shell{grid-template-columns:1fr}aside{position:static;height:auto;border-right:0;border-bottom:1px solid #dfe4ec}.course-mark{margin-bottom:15px}nav{grid-template-columns:repeat(2,1fr)}.back{margin-top:15px}.admin-main{padding:22px 16px}.two{grid-template-columns:1fr}}
+
+<template>
+  <div class="admin-shell">
+    <div v-if="drawerOpen" class="admin-backdrop" @click="closeDrawer"></div>
+
+    <aside class="admin-sidebar" :class="{ 'is-open': drawerOpen }">
+      <div class="admin-sidebar__top">
+        <div class="course-mark">
+          <span>固定课程</span>
+          <strong>数据结构</strong>
+          <small>DATA_STRUCTURES</small>
+        </div>
+        <BaseButton
+          variant="ghost"
+          size="sm"
+          class="admin-drawer-close"
+          aria-label="关闭导航菜单"
+          @click="closeDrawer"
+        >
+          ×
+        </BaseButton>
+      </div>
+
+      <nav class="admin-nav" aria-label="管理导航">
+        <RouterLink to="/admin/knowledge">章节与知识点</RouterLink>
+        <RouterLink to="/admin/questions">四类题库</RouterLink>
+        <RouterLink to="/admin/questions/new">录入题目</RouterLink>
+        <RouterLink to="/admin/materials">课程资料</RouterLink>
+        <RouterLink to="/admin/materials/search">检索预览</RouterLink>
+        <RouterLink to="/admin/coverage">覆盖统计</RouterLink>
+        <RouterLink to="/admin/review-cases">复核案件</RouterLink>
+      </nav>
+
+      <RouterLink class="admin-back" to="/">← 返回首页</RouterLink>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="ui-actions">
+          <BaseButton
+            variant="secondary"
+            size="sm"
+            class="admin-menu-btn"
+            :aria-expanded="drawerOpen ? 'true' : 'false'"
+            aria-label="打开导航菜单"
+            @click="drawerOpen = true"
+          >
+            菜单
+          </BaseButton>
+          <span class="ui-eyebrow admin-brand-eyebrow">M03 · 课程内容工作台</span>
+        </div>
+        <span v-if="me" class="admin-user">{{ me.username }}</span>
+      </header>
+
+      <RouterView />
+    </main>
+  </div>
+</template>
+
+<style scoped>
+.admin-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.admin-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: var(--sp-24) var(--sp-20);
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  z-index: 30;
+}
+
+.admin-sidebar__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-8);
+}
+
+.course-mark {
+  border-left: 3px solid var(--brand-600);
+  padding-left: var(--sp-12);
+  margin-bottom: var(--sp-32);
+}
+
+.course-mark span,
+.course-mark small {
+  display: block;
+  color: var(--ink-500);
+  font-size: var(--fs-12);
+}
+
+.course-mark strong {
+  display: block;
+  font-size: var(--fs-22);
+  line-height: var(--lh-tight);
+  margin: var(--sp-4) 0;
+  color: var(--ink-900);
+}
+
+.course-mark small {
+  font-family: var(--font-mono);
+}
+
+.admin-nav {
+  display: grid;
+  gap: var(--sp-8);
+}
+
+.admin-nav a,
+.admin-back {
+  color: var(--ink-700);
+  text-decoration: none;
+  padding: var(--sp-12) var(--sp-12);
+  border-radius: var(--r-md);
+  font-size: var(--fs-14);
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.admin-nav a:hover,
+.admin-back:hover {
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+
+.admin-nav a.router-link-active {
+  background: var(--brand-100);
+  color: var(--brand-800);
+  font-weight: 700;
+}
+
+.admin-back {
+  margin-top: auto;
+}
+
+.admin-main {
+  padding: var(--sp-24) var(--sp-40) var(--sp-56);
+  min-width: 0;
+}
+
+.admin-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-20);
+}
+
+.admin-brand-eyebrow {
+  margin-bottom: 0;
+}
+
+.admin-user {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: var(--sp-4) var(--sp-12);
+  font-size: var(--fs-13);
+  color: var(--ink-700);
+}
+
+.admin-menu-btn,
+.admin-drawer-close,
+.admin-backdrop {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .admin-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-menu-btn,
+  .admin-drawer-close {
+    display: inline-flex;
+  }
+
+  .admin-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: var(--overlay);
+    z-index: 45;
+  }
+
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    max-width: 82vw;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform var(--dur-base) var(--ease);
+    box-shadow: var(--sh-3);
+  }
+
+  .admin-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .admin-main {
+    padding: var(--sp-20) var(--sp-20) var(--sp-40);
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-main {
+    padding: var(--sp-16) var(--sp-16) var(--sp-32);
+  }
+}
 </style>

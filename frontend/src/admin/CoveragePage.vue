@@ -1,9 +1,152 @@
 <script setup>
-import { onMounted,ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { api } from '../api'
-const report=ref(null),error=ref('');const types={CHOICE:'单选',FILL:'填空',SHORT_ANSWER:'简答',ALGORITHM:'算法'};onMounted(async()=>{try{report.value=await api('/api/admin/question-coverage')}catch(e){error.value=e.message}})
+import BaseCard from '../components/BaseCard.vue'
+import StatusPill from '../components/StatusPill.vue'
+import TableShell from '../components/TableShell.vue'
+
+const report = ref(null)
+const error = ref('')
+const types = { CHOICE: '单选', FILL: '填空', SHORT_ANSWER: '简答', ALGORITHM: '算法' }
+
+onMounted(async () => {
+  try {
+    report.value = await api('/api/admin/question-coverage')
+  } catch (e) {
+    error.value = e.message
+  }
+})
 </script>
 
-<template><section><div class="page-head"><div><h2>覆盖统计</h2><p class="muted">可用题按题型与来源计数；“无题”和“有题但不可用”分别判断。</p></div></div><template v-if="report"><div class="summary"><div class="card"><strong>{{report.zeroQuestionKnowledgePoints.length}}</strong><span>完全无题</span></div><div class="card warning-card"><strong>{{report.unusableOnlyQuestionKnowledgePoints.length}}</strong><span>有题但不可用</span></div><div class="card"><strong>{{report.missingBindingCount}}</strong><span>缺少主知识点</span></div><div class="card"><strong>{{report.incompleteFieldCount}}</strong><span>字段不完整题</span></div></div><div class="card table-wrap"><table><thead><tr><th rowspan="2">知识点</th><th rowspan="2">题库状态</th><th v-for="(_,key) in types" :key="key" colspan="2">{{types[key]}}</th></tr><tr><template v-for="key in Object.keys(types)" :key="key"><th>人工</th><th>AI</th></template></tr></thead><tbody><tr v-for="p in report.knowledgePoints" :key="p.knowledgePointId"><td><span class="code">{{p.code}}</span><br>{{p.name}}</td><td><span v-if="p.zeroQuestion" class="state-pill empty">无题</span><span v-else-if="p.unusableOnlyQuestion" class="state-pill blocked">有题但不可用</span><span v-else class="state-pill ready">有可用题</span></td><template v-for="count in p.counts" :key="count.type"><td>{{count.manual}}</td><td class="ai">{{count.aiGenerated}}</td></template></tr></tbody></table></div><div class="status-lists"><div class="card zero"><h3>完全无题</h3><p v-if="!report.zeroQuestionKnowledgePoints.length" class="success">每个知识点都至少关联过一道题。</p><span v-for="p in report.zeroQuestionKnowledgePoints" :key="p.knowledgePointId" class="badge">{{p.code}} · {{p.name}}</span></div><div class="card zero"><h3>有题但不可用</h3><p v-if="!report.unusableOnlyQuestionKnowledgePoints.length" class="success">没有仅含坏题或停用题的知识点。</p><span v-for="p in report.unusableOnlyQuestionKnowledgePoints" :key="p.knowledgePointId" class="badge warning">{{p.code}} · {{p.name}}</span></div></div><div class="card zero"><h3>字段不完整题（最多 3 条）</h3><p v-if="!report.incompleteQuestions.length" class="success">未发现字段不完整题。</p><p v-for="q in report.incompleteQuestions" :key="q.questionId"><span class="code">{{q.questionNo}}</span> · {{q.message}}</p></div></template><p class="error">{{error}}</p></section></template>
+<template>
+  <section>
+    <div class="ui-page-head">
+      <div>
+        <span class="ui-eyebrow">COVERAGE REPORT</span>
+        <h1>覆盖统计</h1>
+        <p class="ui-subtitle">可用题按题型与来源计数；“无题”和“有题但不可用”分别判断。</p>
+      </div>
+    </div>
 
-<style scoped>.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}.summary .card{display:grid;gap:5px}.summary strong{font:30px Consolas,monospace}.summary span{color:#697386}.warning-card{border-left:3px solid #c67a2b}.table-wrap{overflow:auto}.table-wrap table{min-width:980px;text-align:center}.table-wrap th,.table-wrap td{text-align:center}.table-wrap td:first-child{text-align:left}.ai{background:#f0f6f5}.state-pill{display:inline-block;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}.state-pill.empty{background:#eef1f5;color:#566170}.state-pill.blocked,.badge.warning{background:#fff2df;color:#915b19}.state-pill.ready{background:#eaf6ef;color:#28724a}.status-lists{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.zero{margin-top:16px}.status-lists .zero{margin-top:0}.zero .badge{margin:0 8px 8px 0}@media(max-width:850px){.summary{grid-template-columns:1fr 1fr}.status-lists{grid-template-columns:1fr}}@media(max-width:520px){.summary{grid-template-columns:1fr}}</style>
+    <template v-if="report">
+      <div class="ui-grid ui-grid--4 summary ui-mb-16">
+        <BaseCard class="summary__card">
+          <strong class="ui-num">{{ report.zeroQuestionKnowledgePoints.length }}</strong>
+          <span class="ui-muted">完全无题</span>
+        </BaseCard>
+        <BaseCard class="summary__card warning-card">
+          <strong class="ui-num">{{ report.unusableOnlyQuestionKnowledgePoints.length }}</strong>
+          <span class="ui-muted">有题但不可用</span>
+        </BaseCard>
+        <BaseCard class="summary__card">
+          <strong class="ui-num">{{ report.missingBindingCount }}</strong>
+          <span class="ui-muted">缺少主知识点</span>
+        </BaseCard>
+        <BaseCard class="summary__card">
+          <strong class="ui-num">{{ report.incompleteFieldCount }}</strong>
+          <span class="ui-muted">字段不完整题</span>
+        </BaseCard>
+      </div>
+
+      <BaseCard>
+        <TableShell :empty="!report.knowledgePoints.length" empty-title="暂无覆盖统计数据" class="cov-table">
+          <template #head>
+            <tr>
+              <th rowspan="2">知识点</th>
+              <th rowspan="2">题库状态</th>
+              <th v-for="(_, key) in types" :key="key" colspan="2">{{ types[key] }}</th>
+            </tr>
+            <tr>
+              <template v-for="key in Object.keys(types)" :key="key">
+                <th>人工</th>
+                <th>AI</th>
+              </template>
+            </tr>
+          </template>
+          <tr v-for="p in report.knowledgePoints" :key="p.knowledgePointId">
+            <td>
+              <span class="ui-code">{{ p.code }}</span><br />
+              {{ p.name }}
+            </td>
+            <td>
+              <StatusPill v-if="p.zeroQuestion" tone="neutral">无题</StatusPill>
+              <StatusPill v-else-if="p.unusableOnlyQuestion" tone="warn">有题但不可用</StatusPill>
+              <StatusPill v-else tone="success">有可用题</StatusPill>
+            </td>
+            <template v-for="count in p.counts" :key="count.type">
+              <td class="ui-num">{{ count.manual }}</td>
+              <td class="ui-num ai-col">{{ count.aiGenerated }}</td>
+            </template>
+          </tr>
+        </TableShell>
+      </BaseCard>
+
+      <div class="ui-grid ui-grid--2 ui-mt-16">
+        <BaseCard>
+          <h2 class="ui-h3">完全无题</h2>
+          <p v-if="!report.zeroQuestionKnowledgePoints.length" class="ui-success">每个知识点都至少关联过一道题。</p>
+          <div class="ui-actions">
+            <StatusPill v-for="p in report.zeroQuestionKnowledgePoints" :key="p.knowledgePointId" tone="neutral">
+              {{ p.code }} · {{ p.name }}
+            </StatusPill>
+          </div>
+        </BaseCard>
+
+        <BaseCard>
+          <h2 class="ui-h3">有题但不可用</h2>
+          <p v-if="!report.unusableOnlyQuestionKnowledgePoints.length" class="ui-success">没有仅含坏题或停用题的知识点。</p>
+          <div class="ui-actions">
+            <StatusPill v-for="p in report.unusableOnlyQuestionKnowledgePoints" :key="p.knowledgePointId" tone="warn">
+              {{ p.code }} · {{ p.name }}
+            </StatusPill>
+          </div>
+        </BaseCard>
+      </div>
+
+      <BaseCard class="ui-mt-16">
+        <h2 class="ui-h3">字段不完整题（最多 3 条）</h2>
+        <p v-if="!report.incompleteQuestions.length" class="ui-success">未发现字段不完整题。</p>
+        <p v-for="q in report.incompleteQuestions" :key="q.questionId">
+          <span class="ui-code">{{ q.questionNo }}</span> · {{ q.message }}
+        </p>
+      </BaseCard>
+    </template>
+
+    <p v-if="error" class="ui-error ui-mt-12" role="alert">{{ error }}</p>
+  </section>
+</template>
+
+<style scoped>
+.summary__card {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.summary__card strong {
+  font-family: var(--font-mono);
+  font-size: var(--fs-28);
+  line-height: var(--lh-tight);
+}
+
+.warning-card {
+  border-left: 3px solid var(--warn);
+}
+
+.cov-table :deep(.ui-table) {
+  min-width: 820px;
+}
+
+.cov-table :deep(th),
+.cov-table :deep(td) {
+  text-align: center;
+}
+
+.cov-table :deep(td:first-child),
+.cov-table :deep(th:first-child) {
+  text-align: left;
+}
+
+.ai-col {
+  background: var(--brand-50);
+}
+</style>

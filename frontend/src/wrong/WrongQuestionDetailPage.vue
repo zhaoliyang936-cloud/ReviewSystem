@@ -3,6 +3,12 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api'
 import AiTutoringPanel from '../ai/AiTutoringPanel.vue'
+import BaseButton from '../components/BaseButton.vue'
+import BaseCard from '../components/BaseCard.vue'
+import BaseField from '../components/BaseField.vue'
+import SkeletonBlock from '../components/SkeletonBlock.vue'
+import StatusPill from '../components/StatusPill.vue'
+import TableShell from '../components/TableShell.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -197,42 +203,44 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="practice-shell">
-    <header class="practice-top">
+  <div class="ui-shell">
+    <header class="ui-topbar">
       <div>
-        <span class="practice-kicker">M09 · WRONG QUESTION DETAIL</span>
-        <h1 class="practice-title">错题详情</h1>
+        <span class="ui-kicker">M09 · WRONG QUESTION DETAIL</span>
+        <h1 class="ui-title">错题详情</h1>
       </div>
-      <div class="p-actions">
+      <div class="ui-actions">
         <RouterLink to="/wrong">返回错题本</RouterLink>
         <RouterLink to="/">返回首页</RouterLink>
       </div>
     </header>
 
-    <p v-if="error" class="p-error" role="alert">{{ error }}</p>
+    <p v-if="error" class="ui-error" role="alert">{{ error }}</p>
 
     <template v-if="detail">
-      <div class="p-card">
-        <div class="p-actions" style="margin-bottom: 12px">
-          <span class="p-pill">{{ TYPE_LABELS[detail.questionType] || detail.questionType }}</span>
-          <span class="p-pill">{{ detail.sourceType === 'AI_GENERATED' ? 'AI 生成' : '人工录入' }}</span>
-          <span class="p-pill">{{ detail.status === 'MASTERED' ? '已掌握' : '待重做' }}</span>
-          <span v-if="detail.originWrongQuestionId" class="p-pill">
+      <BaseCard>
+        <div class="ui-actions ui-mb-12">
+          <StatusPill tone="brand">{{ TYPE_LABELS[detail.questionType] || detail.questionType }}</StatusPill>
+          <StatusPill tone="neutral">{{ detail.sourceType === 'AI_GENERATED' ? 'AI 生成' : '人工录入' }}</StatusPill>
+          <StatusPill :tone="detail.status === 'MASTERED' ? 'success' : 'warn'">
+            {{ detail.status === 'MASTERED' ? '已掌握' : '待重做' }}
+          </StatusPill>
+          <StatusPill v-if="detail.originWrongQuestionId" tone="info">
             AI 变式·源自第 {{ detail.originWrongQuestionId }} 题
-          </span>
-          <span v-if="detail.aiJudged" class="p-pill">AI 判定</span>
-          <span class="p-muted">知识点：{{ detail.knowledgeCode }} · {{ detail.knowledgeName }}</span>
+          </StatusPill>
+          <StatusPill v-if="detail.aiJudged" tone="info">AI 判定</StatusPill>
+          <span class="ui-muted">知识点：{{ detail.knowledgeCode }} · {{ detail.knowledgeName }}</span>
         </div>
 
-        <h2>{{ detail.content?.stem || '（无题干）' }}</h2>
+        <h2 class="wrong-stem">{{ detail.content?.stem || '（无题干）' }}</h2>
 
-        <ul v-if="detail.content?.options?.length" style="padding-left: 20px">
+        <ul v-if="detail.content?.options?.length" class="wrong-options">
           <li v-for="opt in detail.content.options" :key="opt.key || opt.id">
             <strong>{{ opt.key || opt.id }}.</strong> {{ opt.text }}
           </li>
         </ul>
 
-        <p class="p-muted">
+        <p class="ui-muted ui-num">
           错误次数：{{ detail.wrongCount }} ·
           首次答错：{{ new Date(detail.firstWrongAt).toLocaleString() }} ·
           最近答错：{{ new Date(detail.lastWrongAt).toLocaleString() }}
@@ -241,32 +249,20 @@ onMounted(load)
           </template>
         </p>
 
-        <div class="p-actions" style="margin-top: 16px">
-          <button
-            class="p-primary"
-            :disabled="redoBusy || detail.questionStatus !== 'ACTIVE'"
-            @click="redo"
-          >
+        <div class="ui-actions ui-mt-16">
+          <BaseButton variant="primary" :disabled="redoBusy || detail.questionStatus !== 'ACTIVE'" :loading="redoBusy" @click="redo">
             {{ detail.questionStatus !== 'ACTIVE' ? '题目已下架，无法重做' : redoBusy ? '正在创建重做练习…' : '原题重做' }}
-          </button>
-          <button
-            class="p-secondary"
-            :disabled="variantBusy || detail.questionStatus !== 'ACTIVE'"
-            @click="generateVariant"
-          >
+          </BaseButton>
+          <BaseButton variant="secondary" :disabled="variantBusy || detail.questionStatus !== 'ACTIVE'" :loading="variantBusy" @click="generateVariant">
             {{ variantBusy ? '生成变式中…' : '生成变式' }}
-          </button>
-          <button
-            class="p-secondary"
-            :disabled="explainBusy"
-            @click="requestExplanation"
-          >
+          </BaseButton>
+          <BaseButton variant="secondary" :loading="explainBusy" @click="requestExplanation">
             {{ explainBusy ? '生成讲解中…' : 'AI 讲解' }}
-          </button>
+          </BaseButton>
         </div>
-        <p v-if="variantStatus" class="p-muted" style="margin-top: 8px">{{ variantStatus }}</p>
-        <p v-if="variantError" class="p-error" role="alert" style="margin-top: 8px">{{ variantError }}</p>
-      </div>
+        <p v-if="variantStatus" class="ui-muted ui-mt-12">{{ variantStatus }}</p>
+        <p v-if="variantError" class="ui-error ui-mt-12" role="alert">{{ variantError }}</p>
+      </BaseCard>
 
       <AiTutoringPanel
         v-if="explainBusy || explainError || explainJob"
@@ -278,77 +274,97 @@ onMounted(load)
         @retry="requestExplanation"
       />
 
-      <div class="p-card">
-        <h3>最近作答与参考答案</h3>
-        <p v-if="detail.latestAttempt">
+      <BaseCard>
+        <h3 class="section-h3">最近作答与参考答案</h3>
+        <div v-if="detail.latestAttempt" class="ui-mb-12">
           <strong>最近作答：</strong>
-          <pre class="p-code" style="padding: 10px; border-radius: 8px; overflow-x: auto">{{ formatJson(detail.latestAttempt.answer) }}</pre>
-        </p>
-        <p>
+          <pre class="ui-pre ui-mt-12">{{ formatJson(detail.latestAttempt.answer) }}</pre>
+        </div>
+        <div class="ui-mb-12">
           <strong>标准答案：</strong>
-          <pre class="p-code" style="padding: 10px; border-radius: 8px; overflow-x: auto">{{ formatJson(detail.correctAnswer) }}</pre>
-        </p>
-        <div v-if="detail.rubric">
+          <pre class="ui-pre ui-mt-12">{{ formatJson(detail.correctAnswer) }}</pre>
+        </div>
+        <div v-if="detail.rubric" class="ui-mb-12">
           <strong>评分要点：</strong>
-          <pre class="p-code" style="padding: 10px; border-radius: 8px; overflow-x: auto">{{ formatJson(detail.rubric) }}</pre>
+          <pre class="ui-pre ui-mt-12">{{ formatJson(detail.rubric) }}</pre>
         </div>
         <p v-if="detail.explanation">
           <strong>题目解析：</strong>{{ detail.explanation }}
         </p>
-      </div>
+      </BaseCard>
 
-      <div class="p-card">
-        <h3>历次尝试（{{ detail.attempts.length }}）</h3>
-        <p v-if="!detail.attempts.length" class="p-muted">暂无尝试记录。</p>
-        <table v-else class="p-table">
-          <thead>
+      <BaseCard>
+        <h3 class="section-h3">历次尝试（{{ detail.attempts.length }}）</h3>
+        <TableShell :empty="!detail.attempts.length" empty-title="暂无尝试记录。">
+          <template #head>
             <tr>
               <th>时间</th>
               <th>类型</th>
               <th>结果</th>
               <th>作答快照</th>
             </tr>
-          </thead>
-          <tbody>
-            <tr v-for="a in detail.attempts" :key="a.id">
-              <td>{{ new Date(a.createdAt).toLocaleString() }}</td>
-              <td>{{ ATTEMPT_LABELS[a.attemptType] || a.attemptType }}</td>
-              <td>{{ attemptStatus(a) }}</td>
-              <td><code>{{ JSON.stringify(a.answer) }}</code></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+          </template>
+          <tr v-for="a in detail.attempts" :key="a.id">
+            <td class="ui-num">{{ new Date(a.createdAt).toLocaleString() }}</td>
+            <td>{{ ATTEMPT_LABELS[a.attemptType] || a.attemptType }}</td>
+            <td>{{ attemptStatus(a) }}</td>
+            <td><code class="ui-code">{{ JSON.stringify(a.answer) }}</code></td>
+          </tr>
+        </TableShell>
+      </BaseCard>
 
-      <div class="p-card">
-        <h3>题目反馈</h3>
+      <BaseCard>
+        <h3 class="section-h3">题目反馈</h3>
         <template v-if="detail.feedback">
-          <p class="p-success">
+          <p class="ui-success">
             已提交反馈（{{ CATEGORY_LABELS[detail.feedback.category] || detail.feedback.category }} · 状态：{{ detail.feedback.status }}）
           </p>
           <p>{{ detail.feedback.comment }}</p>
-          <small class="p-muted">提交时间：{{ new Date(detail.feedback.createdAt).toLocaleString() }}</small>
+          <small class="ui-muted ui-num">提交时间：{{ new Date(detail.feedback.createdAt).toLocaleString() }}</small>
         </template>
         <form v-else @submit.prevent="submitFeedback">
-          <label class="p-field">
-            <span>反馈类型</span>
-            <select v-model="fbCategory">
+          <BaseField v-slot="{ id }" label="反馈类型">
+            <select :id="id" v-model="fbCategory">
               <option value="SUSPECTED_ERROR">题目疑似有误</option>
               <option value="CONTENT_PROBLEM">内容或解析问题</option>
               <option value="OTHER">其他</option>
             </select>
-          </label>
-          <label class="p-field">
-            <span>反馈说明（不超过 500 字）</span>
-            <textarea v-model="fbComment" maxlength="500" placeholder="请描述题目或答案存在的问题…" required />
-          </label>
-          <p v-if="fbError" class="p-error" role="alert">{{ fbError }}</p>
-          <p v-if="fbMessage" class="p-success" role="status">{{ fbMessage }}</p>
-          <button class="p-secondary" :disabled="fbBusy">
-            {{ fbBusy ? '提交中…' : '提交反馈' }}
-          </button>
+          </BaseField>
+          <BaseField v-slot="{ id }" label="反馈说明（不超过 500 字）">
+            <textarea :id="id" v-model="fbComment" maxlength="500" placeholder="请描述题目或答案存在的问题…" required></textarea>
+          </BaseField>
+          <p v-if="fbError" class="ui-error ui-mt-12" role="alert">{{ fbError }}</p>
+          <p v-if="fbMessage" class="ui-success ui-mt-12" role="status">{{ fbMessage }}</p>
+          <div class="ui-mt-16">
+            <BaseButton type="submit" variant="secondary" :loading="fbBusy">
+              {{ fbBusy ? '提交中…' : '提交反馈' }}
+            </BaseButton>
+          </div>
         </form>
-      </div>
+      </BaseCard>
     </template>
+
+    <BaseCard v-else-if="!error">
+      <SkeletonBlock :lines="5" />
+    </BaseCard>
   </div>
 </template>
+
+<style scoped>
+.wrong-stem {
+  margin: var(--sp-12) 0;
+  font-size: var(--fs-18);
+  line-height: var(--lh-loose);
+}
+
+.wrong-options {
+  padding-left: var(--sp-20);
+  margin: var(--sp-12) 0;
+}
+
+.section-h3 {
+  margin: 0 0 var(--sp-12);
+  font-size: var(--fs-16);
+  line-height: var(--lh-tight);
+}
+</style>

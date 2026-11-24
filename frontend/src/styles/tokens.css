@@ -1,0 +1,81 @@
+:root {
+  /* Brand */
+  --brand-50: #F1F7F6;
+  --brand-100: #E3EFED;
+  --brand-200: #C6DFDB;
+  --brand-400: #5E9A93;
+  --brand-600: #286A64;
+  --brand-700: #1F544F;
+  --brand-800: #174E49;
+
+  /* Neutral */
+  --ink-900: #172033;
+  --ink-700: #3A465B;
+  --ink-500: #697386;
+  --ink-300: #A8B2C2;
+  --line: #E0E5ED;
+  --line-strong: #CFD6E1;
+  --surface: #FFFFFF;
+  --bg: #F3F5F9;
+  --bg-sub: #FAFBFC;
+
+  /* Semantic */
+  --success: #1E7A46;
+  --success-bg: #EAF6EF;
+  --danger: #A02D28;
+  --danger-bg: #FAE9E8;
+  --warn: #8A6412;
+  --warn-bg: #FAF3E4;
+  --info: #2B5B8A;
+  --info-bg: #EAF1F8;
+
+  /* Typography */
+  --font-sans: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  --font-mono: Consolas, monospace;
+
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-22: 22px;
+  --fs-28: 28px;
+
+  --lh-tight: 1.25;
+  --lh-base: 1.6;
+  --lh-loose: 1.75;
+
+  /* Spacing */
+  --sp-4: 4px;
+  --sp-8: 8px;
+  --sp-12: 12px;
+  --sp-16: 16px;
+  --sp-20: 20px;
+  --sp-24: 24px;
+  --sp-32: 32px;
+  --sp-40: 40px;
+  --sp-56: 56px;
+
+  /* Radii */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  /* Shadows */
+  --sh-1: 0 1px 2px rgba(23, 32, 51, .06);
+  --sh-2: 0 6px 20px rgba(23, 32, 51, .06);
+  --sh-3: 0 16px 40px rgba(23, 32, 51, .10);
+  --overlay: rgba(23, 32, 51, 0.45);
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 240ms;
+  --ease: cubic-bezier(.2, .7, .3, 1);
+
+  /* Containers */
+  --w-prose: 760px;
+  --w-page: 1024px;
+  --w-wide: 1180px;
+}

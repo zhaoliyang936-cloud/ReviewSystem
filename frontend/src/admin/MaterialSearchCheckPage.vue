@@ -1,6 +1,11 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { api } from '../api'
+import BaseButton from '../components/BaseButton.vue'
+import BaseCard from '../components/BaseCard.vue'
+import BaseField from '../components/BaseField.vue'
+import EmptyState from '../components/EmptyState.vue'
+import StatusPill from '../components/StatusPill.vue'
 
 const points = ref([])
 const knowledgeId = ref('')
@@ -33,91 +38,101 @@ onMounted(async () => {
 
 <template>
   <section>
-    <div class="page-head">
+    <div class="ui-page-head">
       <div>
-        <h2>资料检索预览</h2>
-        <p class="muted">仅检索 subject=1 的已发布资料；按关键词命中数降序、同分按 chunkId 升序，最多返回 3 段（c1..c3）。</p>
+        <span class="ui-eyebrow">SEARCH CHECK</span>
+        <h1>资料检索预览</h1>
+        <p class="ui-subtitle">仅检索 subject=1 的已发布资料；按关键词命中数降序、同分按 chunkId 升序，最多返回 3 段（c1..c3）。</p>
       </div>
-      <RouterLink class="secondary link-btn" to="/admin/materials">返回资料列表</RouterLink>
+      <BaseButton to="/admin/materials" variant="secondary">返回资料列表</BaseButton>
     </div>
 
-    <form class="card filters" @submit.prevent="runSearch">
-      <label class="field">
-        知识点（可选）
-        <select v-model="knowledgeId">
+    <BaseCard tag="form" class="s-filters ui-mb-16" @submit.prevent="runSearch">
+      <BaseField v-slot="{ id }" label="知识点（可选）">
+        <select :id="id" v-model="knowledgeId">
           <option value="">全部知识点</option>
           <option v-for="p in points" :key="p.id" :value="p.id">{{ p.code }} · {{ p.name }}</option>
         </select>
-      </label>
-      <label class="field">
-        检索关键词（中文按 ≥2 字二元组，英文/数字按完整词，大小写不敏感；留空仅按知识点过滤）
-        <input v-model="query" placeholder="例如：二叉树 前序遍历 DFS" />
-      </label>
-      <button class="primary" type="submit">检索预览</button>
-    </form>
+      </BaseField>
 
-    <p v-if="error" class="error">{{ error }}</p>
+      <BaseField v-slot="{ id }" label="检索关键词（中文按 ≥2 字二元组，英文/数字按完整词，大小写不敏感；留空仅按知识点过滤）">
+        <input :id="id" v-model="query" placeholder="例如：二叉树 前序遍历 DFS" />
+      </BaseField>
 
-    <div v-if="searched" class="card">
-      <h3>命中结果（{{ hits.length }} / 3）</h3>
-      <p v-if="!hits.length" class="muted">未命中任何已发布片段。</p>
+      <BaseButton type="submit" variant="primary">检索预览</BaseButton>
+    </BaseCard>
+
+    <p v-if="error" class="ui-error ui-mb-12" role="alert">{{ error }}</p>
+
+    <BaseCard v-if="searched">
+      <h2 class="hit-title ui-num">命中结果（{{ hits.length }} / 3）</h2>
+      <EmptyState v-if="!hits.length" title="未命中任何已发布片段。" />
       <ol v-else class="hit-list">
         <li v-for="(hit, idx) in hits" :key="hit.chunkId">
           <div class="hit-head">
-            <span class="badge active">c{{ idx + 1 }}</span>
+            <StatusPill tone="success">c{{ idx + 1 }}</StatusPill>
             <strong>{{ hit.title }}</strong>
-            <span class="code">来源: {{ hit.sourceLabel || '—' }}</span>
-            <span class="code">versionId={{ hit.materialVersionId }}</span>
-            <span class="code">chunkId={{ hit.chunkId }}</span>
-            <span class="badge">命中词数: {{ hit.hitCount }}</span>
+            <span class="ui-code">来源: {{ hit.sourceLabel || '—' }}</span>
+            <span class="ui-code">versionId={{ hit.materialVersionId }}</span>
+            <span class="ui-code">chunkId={{ hit.chunkId }}</span>
+            <StatusPill tone="neutral" class="ui-num">命中词数: {{ hit.hitCount }}</StatusPill>
           </div>
           <pre>{{ hit.text }}</pre>
         </li>
       </ol>
-    </div>
+    </BaseCard>
   </section>
 </template>
 
 <style scoped>
-.filters {
+.s-filters {
   display: grid;
   grid-template-columns: 260px 1fr auto;
-  gap: 12px;
+  gap: var(--sp-12);
   align-items: end;
-  margin-bottom: 14px;
 }
-.link-btn {
-  display: inline-block;
-  text-decoration: none;
+
+.s-filters :deep(.ui-field + .ui-field) {
+  margin-top: 0;
 }
+
+.hit-title {
+  margin: 0 0 var(--sp-12);
+  font-size: var(--fs-16);
+}
+
 .hit-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 12px;
+  gap: var(--sp-12);
 }
+
 .hit-list li {
-  border: 1px solid #dfe4ec;
-  border-radius: 8px;
-  padding: 12px;
-  background: #fafbfc;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--sp-12);
+  background: var(--bg-sub);
 }
+
 .hit-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--sp-8);
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--sp-8);
 }
+
 .hit-list pre {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
   font-family: inherit;
 }
-@media (max-width: 900px) {
-  .filters {
+
+@media (max-width: 1024px) {
+  .s-filters {
     grid-template-columns: 1fr;
   }
 }

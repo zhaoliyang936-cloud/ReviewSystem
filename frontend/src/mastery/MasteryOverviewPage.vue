@@ -2,6 +2,11 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { api } from '../api'
 import AiTutoringPanel from '../ai/AiTutoringPanel.vue'
+import BaseButton from '../components/BaseButton.vue'
+import BaseCard from '../components/BaseCard.vue'
+import BaseField from '../components/BaseField.vue'
+import StatusPill from '../components/StatusPill.vue'
+import TableShell from '../components/TableShell.vue'
 
 const data = ref({ items: [], page: 0, size: 20, total: 0 })
 const status = ref('')
@@ -22,6 +27,15 @@ const labels = {
   CONSOLIDATE: '巩固',
   STABLE: '稳定'
 }
+
+const tones = {
+  UNASSESSED: 'neutral',
+  INSUFFICIENT: 'info',
+  WEAK: 'danger',
+  CONSOLIDATE: 'warn',
+  STABLE: 'success'
+}
+
 const score = v => (v == null ? '—' : Number(v).toFixed(1))
 const date = v => (v ? new Date(v).toLocaleString() : '—')
 
@@ -85,29 +99,33 @@ onMounted(() => load())
 </script>
 
 <template>
-  <div class="practice-shell">
-    <header class="practice-top">
+  <div class="ui-shell">
+    <header class="ui-topbar">
       <div>
-        <span class="practice-kicker">MASTERY</span>
-        <h1 class="practice-title">知识点掌握度</h1>
+        <span class="ui-kicker">MASTERY</span>
+        <h1 class="ui-title">知识点掌握度</h1>
       </div>
       <RouterLink to="/">返回首页</RouterLink>
     </header>
 
-    <div class="p-card">
-      <div class="p-actions">
-        <label>状态
-          <select v-model="status" @change="load(0)">
+    <BaseCard>
+      <div class="ui-actions mastery-filters ui-mb-16">
+        <BaseField v-slot="{ id }" label="状态" class="mastery-filter-item">
+          <select :id="id" v-model="status" @change="load(0)">
             <option value="">全部</option>
             <option v-for="(label, key) in labels" :key="key" :value="key">{{ label }}</option>
           </select>
-        </label>
-        <input v-model="guidanceQuery" placeholder="复习指导关注点（可选）" style="padding: 8px; min-width: 200px" />
-        <button class="p-secondary" @click="load(data.page)">刷新</button>
+        </BaseField>
+        <BaseField v-slot="{ id }" label="复习指导关注点" class="mastery-filter-grow">
+          <input :id="id" v-model="guidanceQuery" placeholder="复习指导关注点（可选）" />
+        </BaseField>
+        <BaseButton variant="secondary" @click="load(data.page)">刷新</BaseButton>
       </div>
-      <p v-if="error" class="p-error">{{ error }}</p>
-      <table class="p-table">
-        <thead>
+
+      <p v-if="error" class="ui-error" role="alert">{{ error }}</p>
+
+      <TableShell :empty="!data.items.length" empty-title="暂无掌握度记录">
+        <template #head>
           <tr>
             <th>知识点</th>
             <th>最终分</th>
@@ -118,33 +136,34 @@ onMounted(() => load())
             <th>更新状态</th>
             <th>复习指导</th>
           </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in data.items" :key="item.knowledgeId">
-            <td>
-              <RouterLink :to="`/mastery/${item.knowledgeId}`">{{ item.knowledgeCode }} {{ item.knowledgeName }}</RouterLink>
-              <small>{{ item.chapterTitle }}</small>
-            </td>
-            <td>{{ score(item.finalScore) }}</td>
-            <td>{{ score(item.ruleScore) }}</td>
-            <td>{{ item.n }}</td>
-            <td>{{ labels[item.status] }}</td>
-            <td>{{ date(item.latestPracticeAt) }}</td>
-            <td>{{ item.updating ? '更新中' : '已更新' }}</td>
-            <td>
-              <button class="p-secondary" :disabled="guidanceBusy" @click="requestGuidance(item)">
-                获取指导
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="p-actions">
-        <button class="p-secondary" :disabled="data.page === 0" @click="load(data.page - 1)">上一页</button>
+        </template>
+        <tr v-for="item in data.items" :key="item.knowledgeId">
+          <td>
+            <RouterLink :to="`/mastery/${item.knowledgeId}`">{{ item.knowledgeCode }} {{ item.knowledgeName }}</RouterLink>
+            <small class="mastery-chapter">{{ item.chapterTitle }}</small>
+          </td>
+          <td class="ui-num">{{ score(item.finalScore) }}</td>
+          <td class="ui-num">{{ score(item.ruleScore) }}</td>
+          <td class="ui-num">{{ item.n }}</td>
+          <td>
+            <StatusPill :tone="tones[item.status] || 'neutral'">{{ labels[item.status] }}</StatusPill>
+          </td>
+          <td class="ui-num">{{ date(item.latestPracticeAt) }}</td>
+          <td>{{ item.updating ? '更新中' : '已更新' }}</td>
+          <td>
+            <BaseButton variant="secondary" size="sm" :disabled="guidanceBusy" @click="requestGuidance(item)">
+              获取指导
+            </BaseButton>
+          </td>
+        </tr>
+      </TableShell>
+
+      <div class="ui-pager">
+        <BaseButton variant="secondary" size="sm" :disabled="data.page === 0" @click="load(data.page - 1)">上一页</BaseButton>
         <span>第 {{ data.page + 1 }} 页</span>
-        <button class="p-secondary" :disabled="(data.page + 1) * data.size >= data.total" @click="load(data.page + 1)">下一页</button>
+        <BaseButton variant="secondary" size="sm" :disabled="(data.page + 1) * data.size >= data.total" @click="load(data.page + 1)">下一页</BaseButton>
       </div>
-    </div>
+    </BaseCard>
 
     <AiTutoringPanel
       v-if="guidanceBusy || guidanceError || guidanceJob"
@@ -159,7 +178,23 @@ onMounted(() => load())
 </template>
 
 <style scoped>
-small { display: block; color: #666 }
-select { padding: 8px; background: white; border: 1px solid #aaa }
-table { margin: 16px 0 }
+.mastery-filters {
+  align-items: flex-end;
+}
+
+.mastery-filter-item {
+  min-width: 150px;
+}
+
+.mastery-filter-grow {
+  flex: 1;
+  min-width: 200px;
+  margin-top: 0;
+}
+
+.mastery-chapter {
+  display: block;
+  color: var(--ink-500);
+  font-size: var(--fs-12);
+}
 </style>

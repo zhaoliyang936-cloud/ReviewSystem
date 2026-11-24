@@ -1,6 +1,9 @@
 <script setup>
 import { ref } from 'vue'
 import { api } from '../api'
+import BaseButton from '../components/BaseButton.vue'
+import BaseCard from '../components/BaseCard.vue'
+import StatusPill from '../components/StatusPill.vue'
 
 const props = defineProps({
   job: { type: Object, default: null },
@@ -50,87 +53,87 @@ async function submitFeedback() {
 </script>
 
 <template>
-  <div class="p-card" style="margin-top: 12px; border-left: 4px solid #286a64">
-    <div class="p-actions" style="justify-content: space-between; margin-bottom: 8px">
+  <BaseCard class="ai-panel">
+    <div class="ai-panel__head">
       <strong>{{ title }}</strong>
-      <span v-if="job?.templateVersion" class="p-pill">{{ job.templateVersion }}</span>
+      <StatusPill v-if="job?.templateVersion" tone="brand">{{ job.templateVersion }}</StatusPill>
     </div>
 
-    <p v-if="loading" class="p-muted">正在生成 {{ title }}，请稍候…</p>
+    <p v-if="loading" class="ui-muted">正在生成 {{ title }}，请稍候…</p>
 
     <div v-else-if="error">
-      <p class="p-error" role="alert">{{ errorText(errorCode, error) }}</p>
-      <button v-if="errorCode !== 'AI_BLOCKED_BY_TASK' && errorCode !== 'AI_DISABLED'" class="p-secondary" @click="emit('retry')">
+      <p class="ui-error" role="alert">{{ errorText(errorCode, error) }}</p>
+      <BaseButton v-if="errorCode !== 'AI_BLOCKED_BY_TASK' && errorCode !== 'AI_DISABLED'" variant="secondary" size="sm" @click="emit('retry')">
         重试
-      </button>
+      </BaseButton>
     </div>
 
     <template v-else-if="job">
-      <div v-if="job.ruleFacts" class="p-muted" style="margin-bottom: 10px; font-size: 13px">
+      <div v-if="job.ruleFacts" class="ui-muted ai-facts ui-num">
         规则事实：证据数 n={{ job.ruleFacts.n }} ·
         规则分 M_rule={{ job.ruleFacts.ruleScore == null ? '—' : Number(job.ruleFacts.ruleScore).toFixed(1) }} ·
         状态={{ job.ruleFacts.status }} ·
         最近练习={{ formatDate(job.ruleFacts.latestPracticeAt) }}
       </div>
 
-      <p v-if="job.state === 'QUEUED' || job.state === 'RUNNING'" class="p-muted">
+      <p v-if="job.state === 'QUEUED' || job.state === 'RUNNING'" class="ui-muted">
         作业处理中（{{ job.state }}）…
       </p>
 
       <div v-else-if="job.status === 'INSUFFICIENT_SOURCE'">
-        <p class="p-muted">{{ job.message || '资料不足，已提供规则摘要' }}</p>
-        <p v-if="job.errorCode === 'AI_SOURCE_CONFLICT'" class="p-error">检测到同知识点资料存在冲突（AI_SOURCE_CONFLICT），已停止生成。</p>
+        <p class="ui-muted">{{ job.message || '资料不足，已提供规则摘要' }}</p>
+        <p v-if="job.errorCode === 'AI_SOURCE_CONFLICT'" class="ui-error">检测到同知识点资料存在冲突（AI_SOURCE_CONFLICT），已停止生成。</p>
       </div>
 
       <div v-else-if="job.expiredCleaned">
-        <p class="p-muted">{{ job.message || '该结果已过期清理，可重新请求' }}</p>
-        <button class="p-secondary" @click="emit('retry')">重新请求</button>
+        <p class="ui-muted">{{ job.message || '该结果已过期清理，可重新请求' }}</p>
+        <BaseButton variant="secondary" size="sm" @click="emit('retry')">重新请求</BaseButton>
       </div>
 
       <div v-else-if="job.state === 'FAILED' || job.state === 'EXPIRED'">
-        <p class="p-error" role="alert">{{ errorText(job.errorCode, job.message) }}</p>
-        <button class="p-secondary" @click="emit('retry')">重新请求</button>
+        <p class="ui-error" role="alert">{{ errorText(job.errorCode, job.message) }}</p>
+        <BaseButton variant="secondary" size="sm" @click="emit('retry')">重新请求</BaseButton>
       </div>
 
       <div v-else-if="job.state === 'SUCCEEDED' && job.output">
-        <div v-if="job.output.keyConcepts?.length" style="margin-bottom: 10px">
+        <div v-if="job.output.keyConcepts?.length" class="ai-section">
           <strong>关键概念：</strong>
           <ul>
             <li v-for="(kc, idx) in job.output.keyConcepts" :key="idx">{{ kc }}</li>
           </ul>
         </div>
 
-        <div v-if="job.output.steps?.length" style="margin-bottom: 10px">
+        <div v-if="job.output.steps?.length" class="ai-section">
           <strong>推导与复习步骤：</strong>
           <ol>
-            <li v-for="(st, idx) in job.output.steps" :key="idx" style="margin-bottom: 6px">
+            <li v-for="(st, idx) in job.output.steps" :key="idx" class="ai-step">
               <div><strong>{{ st.goal }}</strong></div>
               <div>{{ st.action }}</div>
-              <small v-if="st.citationIds?.length" class="p-muted">引用：{{ st.citationIds.join(', ') }}</small>
+              <small v-if="st.citationIds?.length" class="ui-muted">引用：{{ st.citationIds.join(', ') }}</small>
             </li>
           </ol>
         </div>
 
-        <div v-if="job.output.possibleConfusions?.length" style="margin-bottom: 10px">
+        <div v-if="job.output.possibleConfusions?.length" class="ai-section">
           <strong>可能混淆点：</strong>
           <ul>
             <li v-for="(cf, idx) in job.output.possibleConfusions" :key="idx">
-              <span v-if="cf.speculative !== false" class="p-pill" style="margin-right: 6px">推测</span>
+              <StatusPill v-if="cf.speculative !== false" tone="warn" class="ai-spec-pill">推测</StatusPill>
               <span>{{ cf.text }}</span>
-              <small v-if="cf.citationIds?.length" class="p-muted">（引用：{{ cf.citationIds.join(', ') }}）</small>
+              <small v-if="cf.citationIds?.length" class="ui-muted">（引用：{{ cf.citationIds.join(', ') }}）</small>
             </li>
           </ul>
         </div>
 
-        <div v-if="job.output.selfCheck?.length" style="margin-bottom: 10px">
+        <div v-if="job.output.selfCheck?.length" class="ai-section">
           <strong>自查建议：</strong>
           <ul>
             <li v-for="(sc, idx) in job.output.selfCheck" :key="idx">{{ sc }}</li>
           </ul>
         </div>
 
-        <details v-if="job.citations?.length" style="margin: 10px 0">
-          <summary style="cursor: pointer; color: #286a64">展开课程资料引用（{{ job.citations.length }}）</summary>
+        <details v-if="job.citations?.length" class="ai-citations">
+          <summary class="ai-citations__summary">展开课程资料引用（{{ job.citations.length }}）</summary>
           <ul>
             <li v-for="c in job.citations" :key="c.id">
               <strong>[{{ c.id }}]</strong> {{ c.title }}（版本 #{{ c.materialVersionId }}，片段 #{{ c.chunkId }}）
@@ -138,22 +141,80 @@ async function submitFeedback() {
           </ul>
         </details>
 
-        <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #e6ebf1">
-          <div v-if="fbSaved" class="p-success">
+        <div class="ai-feedback">
+          <div v-if="fbSaved" class="ui-success">
             已提交辅导反馈（{{ fbSaved.category }}）{{ fbSaved.comment ? '：' + fbSaved.comment : '' }}
           </div>
-          <form v-else class="p-actions" style="flex-wrap: wrap" @submit.prevent="submitFeedback">
-            <select v-model="fbCategory">
+          <form v-else class="ui-actions" @submit.prevent="submitFeedback">
+            <select v-model="fbCategory" class="ui-select ai-fb-select" aria-label="辅导反馈类型">
               <option value="HELPFUL">有帮助</option>
               <option value="UNCLEAR">讲解不清楚</option>
               <option value="SUSPECTED_ERROR">内容可能有误</option>
             </select>
-            <input v-model="fbComment" maxlength="500" placeholder="补充备注（可选）" style="flex: 1; min-width: 180px" />
-            <button class="p-secondary" :disabled="fbBusy">{{ fbBusy ? '提交中…' : '提交辅导反馈' }}</button>
+            <input v-model="fbComment" maxlength="500" placeholder="补充备注（可选）" class="ui-input ai-fb-input" aria-label="辅导反馈备注" />
+            <BaseButton type="submit" variant="secondary" size="sm" :loading="fbBusy">
+              {{ fbBusy ? '提交中…' : '提交辅导反馈' }}
+            </BaseButton>
           </form>
-          <p v-if="fbError" class="p-error">{{ fbError }}</p>
+          <p v-if="fbError" class="ui-error">{{ fbError }}</p>
         </div>
       </div>
     </template>
-  </div>
+  </BaseCard>
 </template>
+
+<style scoped>
+.ai-panel {
+  margin-top: var(--sp-12);
+  border-left: 4px solid var(--brand-600);
+}
+
+.ai-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-8);
+}
+
+.ai-facts {
+  margin-bottom: var(--sp-12);
+  font-size: var(--fs-13);
+}
+
+.ai-section {
+  margin-bottom: var(--sp-12);
+}
+
+.ai-step {
+  margin-bottom: var(--sp-8);
+}
+
+.ai-spec-pill {
+  margin-right: var(--sp-8);
+}
+
+.ai-citations {
+  margin: var(--sp-12) 0;
+}
+
+.ai-citations__summary {
+  cursor: pointer;
+  color: var(--brand-600);
+}
+
+.ai-feedback {
+  margin-top: var(--sp-12);
+  padding-top: var(--sp-12);
+  border-top: 1px solid var(--line);
+}
+
+.ai-fb-select {
+  width: auto;
+}
+
+.ai-fb-input {
+  flex: 1;
+  min-width: 180px;
+}
+</style>
