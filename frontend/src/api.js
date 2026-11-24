@@ -9,6 +9,7 @@ export async function api(path,options={},retried=false){
   let data={};let message=`请求失败（${response.status}）`
   try{data=await response.json();message=data.message||message}catch{}
   if(response.status===403&&!retried&&method!=='GET'&&method!=='HEAD'&&(!data.code||data.code==='FORBIDDEN')){clearCsrf();return api(path,options,true)}
+  if(response.status===401&&window.location.pathname!=='/'&&!path.startsWith('/api/auth/')){clearCsrf();window.location.replace('/');return new Promise(()=>{})}
   const error=new Error(message);Object.assign(error,data,{status:response.status});throw error
  }
  if(response.status===204)return null;const type=response.headers.get('content-type')||'';return type.includes('json')?response.json():response
