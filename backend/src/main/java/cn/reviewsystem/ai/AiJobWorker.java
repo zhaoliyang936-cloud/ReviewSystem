@@ -301,7 +301,7 @@ public class AiJobWorker {
             jobService.succeed(job.id(), outcome.outputJson(), outcome.usageJson());
         } else {
             log.warn("AI job {} scenario=QUESTION_GENERATION failed: {}", job.id(), degradeReason);
-            jobService.fail(job.id(), degradeReason);
+            jobService.fail(job.id(), degradeReason, outcome.usageJson());
         }
     }
 

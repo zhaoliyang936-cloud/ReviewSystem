@@ -141,9 +141,14 @@ public class AiJobService {
     }
 
     public void fail(long jobId, String errorCode) {
+        fail(jobId, errorCode, null);
+    }
+
+    public void fail(long jobId, String errorCode, JsonNode usageJson) {
         db.update(
-                "UPDATE rs_ai_job SET state='FAILED', error_code=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                "UPDATE rs_ai_job SET state='FAILED', error_code=?, usage_json=CAST(? AS jsonb), updated_at=CURRENT_TIMESTAMP WHERE id=?",
                 truncate(errorCode, 60),
+                writeNullableJson(usageJson),
                 jobId);
     }
 

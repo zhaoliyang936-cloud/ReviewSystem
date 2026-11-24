@@ -8,6 +8,8 @@
    - FILL：content.stem 中每个空用 {{blank}} 表示，answer 为 {"blanks":[{"accepted":["标准答案"]}]}（blanks 长度必须等于 {{blank}} 个数），rubric 为 null。
    - SHORT_ANSWER / ALGORITHM：content 为 {"stem":"题干"}，answer 为 {"referenceAnswer":"参考答案"}，rubric 为 {"items":[{"criterion":"评分要点1","score":3},{"criterion":"评分要点2","score":2}]}（各项 score 之和必须等于 maxScore）。
 5. 只输出合法的 JSON 对象，不要输出任何 markdown 代码块或额外解释文字。
+6. explanation 不超过 60 字。
+7. stem 不超过 120 字（CHOICE 选项文本各不超过 40 字）。
 
 输出 JSON 格式：
 {"questions":[{

@@ -29,7 +29,7 @@ public class PromptTemplates {
             return "unknown-v1";
         }
         return switch (scenario) {
-            case "QUESTION_GENERATION" -> "question-generation-v1";
+            case "QUESTION_GENERATION" -> "question-generation-v2";
             case "WRONG_VARIANT" -> "wrong-variant-v3";
             case "GUIDANCE" -> "review-guidance-v1";
             case "EXPLANATION" -> "error-explanation-v1";

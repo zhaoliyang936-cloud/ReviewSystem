@@ -16,14 +16,14 @@ public class AiProperties {
     private String baseUrl = "";
     private String apiKey = "";
     private String model = "";
-    private long timeoutMs = 30000;
+    private long timeoutMs = 60000;
     private int maxAttempts = 2;
     private int prepareTimeoutSeconds = 90;
     private long masteryTimeoutMs = 20000;
     private int dailyCallLimit = 200;
     private double duplicateThreshold = 0.85;
     private double temperature = 0.7;
-    private int maxOutputTokens = 4096;
+    private int maxOutputTokens = 8192;
     private String jsonMode = "auto";
     private Quota quota = new Quota();
 

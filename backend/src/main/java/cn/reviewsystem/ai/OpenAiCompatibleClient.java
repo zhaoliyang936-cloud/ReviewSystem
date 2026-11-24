@@ -142,12 +142,17 @@ public class OpenAiCompatibleClient implements LlmClient {
             if (contentNode == null || !contentNode.isTextual() || contentNode.asText().isBlank()) {
                 throw new AiUnavailableException(AiFailure.MALFORMED, "Empty assistant content");
             }
+            JsonNode finishNode = choices.get(0).get("finish_reason");
+            String finishReason = (finishNode != null && finishNode.isTextual()) ? finishNode.asText() : null;
             JsonNode usageNode = root.path("usage");
             int promptTokens = usageNode.path("prompt_tokens").asInt(0);
             int completionTokens = usageNode.path("completion_tokens").asInt(0);
             int totalTokens = usageNode.path("total_tokens").asInt(promptTokens + completionTokens);
             int reasoningTokens = usageNode.path("completion_tokens_details").path("reasoning_tokens").asInt(0);
-            return new LlmResponse(contentNode.asText(), new LlmUsage(promptTokens, completionTokens, totalTokens, reasoningTokens));
+            return new LlmResponse(
+                    contentNode.asText(),
+                    new LlmUsage(promptTokens, completionTokens, totalTokens, reasoningTokens),
+                    finishReason);
         } catch (AiUnavailableException e) {
             throw e;
         } catch (Exception e) {

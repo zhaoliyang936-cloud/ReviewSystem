@@ -20,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class QuestionGenerationService {
     private static final Logger log = LoggerFactory.getLogger(QuestionGenerationService.class);
+    private static final Set<String> RETRYABLE = Set.of("MALFORMED_JSON", "MISSING_CONTENT_OR_ANSWER");
 
     private final JdbcTemplate db;
     private final ObjectMapper json;
@@ -102,15 +103,19 @@ public class QuestionGenerationService {
         LlmUsage totalUsage = new LlmUsage(0, 0, 0, 0);
         String lastError = null;
 
-        int maxCalls = 2; // initial call + at most 1 retry if duplicates occurred
+        int maxCalls = Math.min(4, (requestedCount + 1) / 2 + 1);
+        int consecutiveEmpty = 0;
+        boolean forceSingleBatch = false;
         for (int call = 0; call < maxCalls && accepted.size() < requestedCount; call++) {
             int needed = requestedCount - accepted.size();
+            int batchSize = forceSingleBatch ? 1 : Math.min(needed, 2);
+            forceSingleBatch = false;
             if (!quotaService.tryConsume(userId)) {
                 lastError = "AI_QUOTA_EXCEEDED";
                 break;
             }
             String userPrompt = prompts.questionGeneration(
-                    needed,
+                    batchSize,
                     source.type(),
                     knowledgeId,
                     source.knowledgeName(),
@@ -124,20 +129,32 @@ public class QuestionGenerationService {
                         Duration.ofMillis(Math.max(1000L, properties.getTimeoutMs())));
             } catch (AiUnavailableException ex) {
                 lastError = mapErrorCode(ex.getFailure());
-                log.warn("Question generation job={} failed: {}", jobId, lastError);
+                log.warn("Question generation job={} call={} batch={} failed: {}", jobId, call, batchSize, lastError);
                 break;
             }
             totalUsage = mergeUsage(totalUsage, response.usage());
 
             AiOutputValidator.ValidationBatch batch = validator.validateQuestions(
                     response.content(),
-                    needed,
+                    batchSize,
                     knowledgeId,
                     existingStems);
 
+            log.info("Question generation job={} call={} batch={} accepted={} duplicates={} invalid={}",
+                    jobId, call, batchSize, batch.accepted().size(), batch.duplicateCount(), batch.invalidCount());
+
             if (batch.accepted().isEmpty()) {
-                log.warn("Question generation job={} call={} rejected: duplicates={} invalid={} reasons={}",
-                        jobId, call, batch.duplicateCount(), batch.invalidCount(), batch.rejectionReasons());
+                int completionTokens = response.usage() != null ? response.usage().completionTokens() : 0;
+                log.warn("Question generation job={} call={} rejected: duplicates={} invalid={} reasons={} finish={} completion={} max={} raw={}",
+                        jobId,
+                        call,
+                        batch.duplicateCount(),
+                        batch.invalidCount(),
+                        batch.rejectionReasons(),
+                        response.finishReason(),
+                        completionTokens,
+                        properties.getMaxOutputTokens(),
+                        abbreviateRaw(response.content()));
             }
 
             for (AiOutputValidator.ParsedQuestion pq : batch.accepted()) {
@@ -147,13 +164,28 @@ public class QuestionGenerationService {
             if (accepted.size() >= requestedCount) {
                 break;
             }
-            if (batch.duplicateCount() == 0) {
-                // No duplicates to retry for; either invalid output or fewer returned
+            if (batch.accepted().isEmpty()) {
+                consecutiveEmpty++;
+                boolean hitRetryable = batch.rejectionReasons().stream().anyMatch(RETRYABLE::contains);
+                if (consecutiveEmpty >= 2) {
+                    if (accepted.isEmpty()) {
+                        lastError = "AI_REJECTED";
+                    }
+                    break;
+                }
+                if (hitRetryable && call < maxCalls - 1) {
+                    forceSingleBatch = true;
+                    continue;
+                }
+                if (batch.duplicateCount() > 0 && call < maxCalls - 1) {
+                    continue;
+                }
                 if (accepted.isEmpty()) {
                     lastError = "AI_REJECTED";
                 }
                 break;
             }
+            consecutiveEmpty = 0;
             if (call == maxCalls - 1 && accepted.isEmpty()) {
                 lastError = "AI_REJECTED";
             }
@@ -494,6 +526,14 @@ public class QuestionGenerationService {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private static String abbreviateRaw(String content) {
+        if (content == null) {
+            return "";
+        }
+        String singleLine = content.replaceAll("\\s+", " ").trim();
+        return singleLine.length() <= 200 ? singleLine : singleLine.substring(0, 200);
     }
 
     private record SourceContext(long versionId, String type, double maxScore, String knowledgeName, String questionJson) {}
