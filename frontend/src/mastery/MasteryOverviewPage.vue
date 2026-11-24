@@ -138,8 +138,8 @@ onMounted(() => load())
           </tr>
         </template>
         <tr v-for="item in data.items" :key="item.knowledgeId">
-          <td>
-            <RouterLink :to="`/mastery/${item.knowledgeId}`">{{ item.knowledgeCode }} {{ item.knowledgeName }}</RouterLink>
+          <td :title="item.knowledgeCode">
+            <RouterLink :to="`/mastery/${item.knowledgeId}`" :title="item.knowledgeCode">{{ item.knowledgeName }}</RouterLink>
             <small class="mastery-chapter">{{ item.chapterTitle }}</small>
           </td>
           <td class="ui-num">{{ score(item.finalScore) }}</td>

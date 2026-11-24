@@ -100,7 +100,7 @@ onMounted(load)
             </tr>
           </template>
           <tr v-for="k in data.plannedKnowledge" :key="k.knowledgeId">
-            <td>{{ k.knowledgeCode }}</td>
+            <td :title="k.knowledgeCode">{{ k.knowledgeName || k.knowledgeCode }}</td>
             <td>
               <StatusPill :tone="k.pool === 'REVIEW' ? 'brand' : 'info'">
                 {{ k.pool === 'REVIEW' ? '复习' : '诊断' }}
@@ -130,7 +130,7 @@ onMounted(load)
           </template>
           <tr v-for="(it, i) in data.items" :key="it.questionId + '-' + i">
             <td class="ui-num">{{ i + 1 }}</td>
-            <td>{{ it.knowledgeCode }}</td>
+            <td :title="it.knowledgeCode">{{ it.knowledgeName || it.knowledgeCode }}</td>
             <td>{{ it.questionType }}</td>
             <td>
               <StatusPill :tone="it.reason.pool === 'REVIEW' ? 'brand' : 'info'">

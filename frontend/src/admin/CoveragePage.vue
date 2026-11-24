@@ -65,8 +65,8 @@ onMounted(async () => {
           </template>
           <tr v-for="p in report.knowledgePoints" :key="p.knowledgePointId">
             <td>
-              <span class="ui-code">{{ p.code }}</span><br />
-              {{ p.name }}
+              {{ p.name }}<br />
+              <small class="ui-muted ui-code">{{ p.code }}</small>
             </td>
             <td>
               <StatusPill v-if="p.zeroQuestion" tone="neutral">无题</StatusPill>
@@ -87,7 +87,7 @@ onMounted(async () => {
           <p v-if="!report.zeroQuestionKnowledgePoints.length" class="ui-success">每个知识点都至少关联过一道题。</p>
           <div class="ui-actions">
             <StatusPill v-for="p in report.zeroQuestionKnowledgePoints" :key="p.knowledgePointId" tone="neutral">
-              {{ p.code }} · {{ p.name }}
+              {{ p.name }} · {{ p.code }}
             </StatusPill>
           </div>
         </BaseCard>
@@ -97,7 +97,7 @@ onMounted(async () => {
           <p v-if="!report.unusableOnlyQuestionKnowledgePoints.length" class="ui-success">没有仅含坏题或停用题的知识点。</p>
           <div class="ui-actions">
             <StatusPill v-for="p in report.unusableOnlyQuestionKnowledgePoints" :key="p.knowledgePointId" tone="warn">
-              {{ p.code }} · {{ p.name }}
+              {{ p.name }} · {{ p.code }}
             </StatusPill>
           </div>
         </BaseCard>

@@ -216,8 +216,8 @@ onMounted(refresh)
           <ul v-else class="home-list">
             <li v-for="m in masteryState.items" :key="m.knowledgeId" class="home-list__item">
               <div class="home-item-main">
-                <RouterLink :to="`/mastery/${m.knowledgeId}`" class="home-item-link">
-                  {{ m.knowledgeCode }} {{ m.knowledgeName }}
+                <RouterLink :to="`/mastery/${m.knowledgeId}`" class="home-item-link" :title="m.knowledgeCode">
+                  {{ m.knowledgeName }} <small class="ui-muted">{{ m.knowledgeCode }}</small>
                 </RouterLink>
                 <div class="ui-muted home-item-meta ui-num">最终分 {{ formatScore(m.finalScore) }}</div>
               </div>
@@ -242,7 +242,7 @@ onMounted(refresh)
                 <RouterLink :to="`/wrong/${w.id}`" class="home-item-link home-stem">
                   {{ w.stem || '（无题干）' }}
                 </RouterLink>
-                <div class="ui-muted home-item-meta">{{ w.knowledgeCode }} · 错 {{ w.wrongCount }} 次</div>
+                <div class="ui-muted home-item-meta" :title="w.knowledgeCode">{{ w.knowledgeName || w.knowledgeCode }} · 错 {{ w.wrongCount }} 次</div>
               </div>
               <StatusPill :tone="w.status === 'MASTERED' ? 'success' : 'warn'">
                 {{ w.status === 'MASTERED' ? '已掌握' : '待重做' }}

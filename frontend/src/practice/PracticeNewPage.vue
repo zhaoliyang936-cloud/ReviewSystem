@@ -72,8 +72,8 @@ async function create() {
         <label v-for="p in enabled" :key="p.id" class="ui-option">
           <input v-model="selected" type="checkbox" :value="p.id" />
           <span>
-            <strong>{{ p.code }}</strong><br />
-            <small class="ui-muted">{{ p.name }}</small>
+            <strong>{{ p.name }}</strong><br />
+            <small class="ui-muted">{{ p.code }}</small>
           </span>
         </label>
       </div>

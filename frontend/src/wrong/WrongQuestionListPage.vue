@@ -157,7 +157,7 @@ onMounted(() => {
         <tr v-for="item in data.items" :key="item.id">
           <td>
             <div><strong>{{ item.stem || '（无题干）' }}</strong></div>
-            <small class="ui-muted">{{ item.knowledgeCode }} · {{ item.knowledgeName }}</small>
+            <small class="ui-muted" :title="item.knowledgeCode">{{ item.knowledgeName }} · {{ item.knowledgeCode }}</small>
           </td>
           <td>
             <div class="ui-actions wrong-pills">

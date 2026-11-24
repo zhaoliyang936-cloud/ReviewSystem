@@ -229,7 +229,7 @@ onMounted(load)
             AI 变式·源自第 {{ detail.originWrongQuestionId }} 题
           </StatusPill>
           <StatusPill v-if="detail.aiJudged" tone="info">AI 判定</StatusPill>
-          <span class="ui-muted">知识点：{{ detail.knowledgeCode }} · {{ detail.knowledgeName }}</span>
+          <span class="ui-muted" :title="detail.knowledgeCode">知识点：{{ detail.knowledgeName }} · {{ detail.knowledgeCode }}</span>
         </div>
 
         <h2 class="wrong-stem">{{ detail.content?.stem || '（无题干）' }}</h2>
