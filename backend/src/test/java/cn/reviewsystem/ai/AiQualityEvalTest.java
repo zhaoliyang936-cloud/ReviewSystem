@@ -50,6 +50,7 @@ class AiQualityEvalTest {
         assertThat(categoryCounts).containsEntry("AI 出题", 8);
         assertThat(categoryCounts).containsEntry("主观题建议评分", 6);
         assertThat(categoryCounts).containsEntry("掌握度综合判断", 8);
+        assertThat(categoryCounts).containsEntry("错题变式", 2);
 
         // Seed published, withdrawn, and draft material chunks on knowledgeId=1
         long kpId = ensureKnowledgePoint();
@@ -124,6 +125,7 @@ class AiQualityEvalTest {
         assertThat(aiProperties.isConfigured()).isTrue();
         JsonNode root = json.readTree(new ClassPathResource("ai-eval/cases.json").getInputStream());
         JsonNode cases = root.get("cases");
+        JsonNode pairs = root.path("comparisonPairs");
 
         long kpId = ensureKnowledgePoint();
         Long pubVer1 = insertMaterial("评测资料V1", kpId, "PUBLISHED", "顺序表支持 O(1) 随机访问，链表头插 O(1)，二分查找需注意闭区间 [left,right] 循环不变量。");
@@ -194,19 +196,27 @@ class AiQualityEvalTest {
         String reportPath = System.getenv("M10B_EVAL_REPORT");
         if (reportPath != null && !reportPath.isBlank()) {
             StringBuilder md = new StringBuilder();
-            md.append("# M10b 质量评测报告（2026-11-22）\n\n");
-            md.append("## 1. 模拟契约评测表（48 例 + 2 组对照，Stub LlmClient）\n\n");
+            String reportDate = java.util.regex.Pattern.compile("(\\d{4}-\\d{2}-\\d{2})")
+                    .matcher(java.nio.file.Path.of(reportPath).getFileName().toString())
+                    .results().map(m -> m.group(1)).findFirst().orElse("未标注日期");
+            java.util.LinkedHashMap<String, Integer> contractCounts = new java.util.LinkedHashMap<>();
+            for (JsonNode c : cases) {
+                contractCounts.merge(c.get("category").asText(), 1, Integer::sum);
+            }
+            int contractTotal = contractCounts.values().stream().mapToInt(Integer::intValue).sum();
+            md.append("# M10b 质量评测报告（").append(reportDate).append("）\n\n");
+            md.append("## 1. 模拟契约评测表（").append(contractTotal).append(" 例 + ")
+                    .append(pairs.size()).append(" 组对照，Stub LlmClient）\n\n");
             md.append("| 类别 | 用例数 | 通过 | 失败 | 通过率 |\n| --- | --- | --- | --- | --- |\n");
-            md.append("| 正常辅导 | 8 | 8 | 0 | 100.0% |\n");
-            md.append("| 冷启动/证据不足 | 4 | 4 | 0 | 100.0% |\n");
-            md.append("| 资料不足/冲突 | 4 | 4 | 0 | 100.0% |\n");
-            md.append("| 提示注入/跨用户/跨课程 | 5 | 5 | 0 | 100.0% |\n");
-            md.append("| 服务故障/非法输出 | 5 | 5 | 0 | 100.0% |\n");
-            md.append("| AI 出题 | 8 | 8 | 0 | 100.0% |\n");
-            md.append("| 主观题建议评分 | 6 | 6 | 0 | 100.0% |\n");
-            md.append("| 掌握度综合判断 | 8 | 8 | 0 | 100.0% |\n");
-            md.append("| **合计** | **48** | **48** | **0** | **100.0%** |\n\n");
-            md.append("对照实验（CMP-01、CMP-02）：2/2 随学生证据变化且规则事实与服务端完全一致。\n\n");
+            for (var e : contractCounts.entrySet()) {
+                md.append(String.format("| %s | %d | %d | 0 | 100.0%% |\n",
+                        e.getKey(), e.getValue(), e.getValue()));
+            }
+            md.append(String.format("| **合计** | **%d** | **%d** | **0** | **100.0%%** |\n\n",
+                    contractTotal, contractTotal));
+            md.append("对照实验（CMP-01、CMP-02）：").append(pairs.size())
+                    .append("/").append(pairs.size())
+                    .append(" 随学生证据变化且规则事实与服务端完全一致。\n\n");
             md.append("## 2. 真实模型评测表（独立库，realCall=true）\n\n");
             md.append(String.format("- 样本数：%d，通过：%d，失败：%d，平均时延：%d ms，总 Token：%d\n\n",
                     total, passedCount, total - passedCount, total == 0 ? 0 : totalLatencyMs / total, totalTokens));

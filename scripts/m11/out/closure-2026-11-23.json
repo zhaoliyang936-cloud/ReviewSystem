@@ -4,10 +4,10 @@
     "aiScheduler":  true,
     "envLoadedFromDotEnv":  true,
     "total":  16,
-    "passed":  15,
-    "failed":  1,
+    "passed":  16,
+    "failed":  0,
     "skipped":  0,
-    "durationMs":  338089,
+    "durationMs":  308668,
     "steps":  [
                   {
                       "step":  "1_register_login",
@@ -18,7 +18,7 @@
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  724
+                      "ms":  624
                   },
                   {
                       "step":  "2_admin_chapter_kp_zero_coverage",
@@ -29,7 +29,7 @@
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  173
+                      "ms":  178
                   },
                   {
                       "step":  "3_admin_create_4_types_coverage",
@@ -40,7 +40,7 @@
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  112
+                      "ms":  150
                   },
                   {
                       "step":  "4_create_10q_practice",
@@ -51,7 +51,7 @@
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  11950
+                      "ms":  12010
                   },
                   {
                       "step":  "5_submit_practice_with_png",
@@ -62,7 +62,7 @@
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  2277
+                      "ms":  2738
                   },
                   {
                       "step":  "6_sql_evidence_wrong_question",
@@ -73,7 +73,7 @@
                       "sqlResult":  "res=10,ev=10,wq=2",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  152
+                      "ms":  156
                   },
                   {
                       "step":  "7_mastery_clamp",
@@ -84,73 +84,73 @@
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  29
+                      "ms":  45
                   },
                   {
                       "step":  "8_wrong_question_redo_mastered",
                       "request":  "POST /api/wrong-questions/{id}/redo + submit correct",
                       "expected":  "status=MASTERED, masteredAt!=null",
-                      "actual":  "status=MASTERED,masteredAt=2026-11-23T15:30:18.511136Z",
+                      "actual":  "status=MASTERED,masteredAt=2026-11-24T03:49:37.437854Z",
                       "sql":  "",
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  3539
+                      "ms":  2971
                   },
                   {
                       "step":  "9_ai_variant_cycle",
                       "request":  "POST /api/wrong-questions/{id}/variant + wrong submit",
-                      "expected":  "SUCCEEDED, origin=AI_GENERATED, origin_wrong_question_id=7",
-                      "actual":  "state=FAILED,err=AI_REJECTED,varQ=,db=,linkedWq=",
+                      "expected":  "SUCCEEDED, origin=AI_GENERATED, origin_wrong_question_id=8",
+                      "actual":  "state=SUCCEEDED,err=,varQ=293,db=AI_GENERATED,167,linkedWq=8",
                       "sql":  "SELECT origin,origin_question_version_id / origin_wrong_question_id",
-                      "sqlResult":  "varQ=,db=,linkedWq=",
-                      "status":  "fail",
-                      "pass":  false,
-                      "ms":  56502
+                      "sqlResult":  "varQ=293,db=AI_GENERATED,167,linkedWq=8",
+                      "status":  "pass",
+                      "pass":  true,
+                      "ms":  22452
                   },
                   {
                       "step":  "10_recommendations_and_task_create",
                       "request":  "GET /api/review/recommendations + POST /api/review/tasks",
                       "expected":  "200 with reason + task created",
-                      "actual":  "rec=200,hasReason=True,task=202,items=5,err={\"id\":\"70\",\"activityId\":\"115\",\"status\":\"PREPARING\",\"questionCount\":5,\"preparationTimeoutSeconds\":90,\"mixRatio\":{\"ratio\":{\"ai\":0.3,\"bank\":0.7},\"actual\":{\"ai\":0,\"bank\":3},\"target\":{\"ai\":2,\"bank\":3},\"planned\":{\"ai\":2,\"bank\":3},\"version\":\"v3\",\"degraded\":[]},\"items\":[]}",
+                      "actual":  "rec=200,hasReason=True,task=202,items=5,err={\"id\":\"70\",\"activityId\":\"116\",\"status\":\"PREPARING\",\"questionCount\":5,\"preparationTimeoutSeconds\":90,\"mixRatio\":{\"ratio\":{\"ai\":0.3,\"bank\":0.7},\"actual\":{\"ai\":0,\"bank\":3},\"target\":{\"ai\":2,\"bank\":3},\"planned\":{\"ai\":2,\"bank\":3},\"version\":\"v3\",\"degraded\":[]},\"items\":[]}",
                       "sql":  "",
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  9907
+                      "ms":  6292
                   },
                   {
                       "step":  "11_submit_task_mastery_snapshot",
                       "request":  "POST /api/review/tasks/{id}/submit",
                       "expected":  "200 + snapshot count increased",
-                      "actual":  "sub=200,before=8,after=10",
+                      "actual":  "sub=200,before=9,after=11",
                       "sql":  "SELECT count(*) FROM rs_mastery_snapshot",
-                      "sqlResult":  "before=8,after=10,latest=87.500|87.500|87.500|f",
+                      "sqlResult":  "before=9,after=11,latest=87.500|87.800|87.800|f",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  6496
+                      "ms":  7373
                   },
                   {
                       "step":  "12_ai_guidance_job",
                       "request":  "POST /api/review/ai/jobs (GUIDANCE)",
                       "expected":  "SUCCEEDED with citations\u003e=1",
-                      "actual":  "http=202,job=26,state=SUCCEEDED,err=,citations=3,raw={\"jobId\":26,\"scenario\":\"GUIDANCE\",\"state\":\"QUEUED\",\"status\":\"QUEUED\",\"errorCode\":null,\"message\":null,\"ruleFacts\":{\"n\":6,\"ruleScore\":87.5,\"finalScore\":87.5,\"status\":\"STABLE\",\"latestPracticeAt\":\"2026-11-23T15:31:28.603727Z\"},\"output\":null,\"citations\":[{\"id\":\"c1\",\"materialVersionId\":\"2\",\"title\":\"ç»ªè®º-ç®æ³ä¸å¤æåº¦åæ\",\"chunkId\":\"4\"},{\"id\":\"c2\",\"materialVersionId\":\"2\",\"title\":\"ç»ªè®º-ç®æ³ä¸å¤æåº¦åæ\",\"chunkId\":\"5\"},{\"id\":\"c3\",\"materialVersionId\":\"2\",\"title\":\"ç»ªè®º-ç®æ³ä¸å¤æåº¦åæ\",\"chunkId\":\"6\"}],\"expiredCleaned\":false,\"templateVersion\":\"review-guidance-v1\",\"createdAt\":\"2026-11-23T15:31:34.849407Z\"}",
+                      "actual":  "http=202,job=26,state=SUCCEEDED,err=,citations=3,raw={\"jobId\":26,\"scenario\":\"GUIDANCE\",\"state\":\"QUEUED\",\"status\":\"QUEUED\",\"errorCode\":null,\"message\":null,\"ruleFacts\":{\"n\":6,\"ruleScore\":87.5,\"finalScore\":87.8,\"status\":\"STABLE\",\"latestPracticeAt\":\"2026-11-24T03:50:09.313189Z\"},\"output\":null,\"citations\":[{\"id\":\"c1\",\"materialVersionId\":\"2\",\"title\":\"ç»ªè®º-ç®æ³ä¸å¤æåº¦åæ\",\"chunkId\":\"4\"},{\"id\":\"c2\",\"materialVersionId\":\"2\",\"title\":\"ç»ªè®º-ç®æ³ä¸å¤æåº¦åæ\",\"chunkId\":\"5\"},{\"id\":\"c3\",\"materialVersionId\":\"2\",\"title\":\"ç»ªè®º-ç®æ³ä¸å¤æåº¦åæ\",\"chunkId\":\"6\"}],\"expiredCleaned\":false,\"templateVersion\":\"review-guidance-v1\",\"createdAt\":\"2026-11-24T03:50:16.441068Z\"}",
                       "sql":  "",
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  15030
+                      "ms":  14506
                   },
                   {
                       "step":  "13_cross_account_ai_question",
                       "request":  "B draws \u0026 grades A\u0027s AI question",
                       "expected":  "hit=true, graded=true",
-                      "actual":  "targetAiQ=294,kp=4,hitQ=292,graded=True",
+                      "actual":  "targetAiQ=295,kp=4,hitQ=292,graded=True",
                       "sql":  "",
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  77383
+                      "ms":  75478
                   },
                   {
                       "step":  "14_review_case_3_reports_filter_resolve",
@@ -161,7 +161,7 @@
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  54417
+                      "ms":  51867
                   },
                   {
                       "step":  "15_final_state_consistency",
@@ -172,7 +172,7 @@
                       "sqlResult":  "act=0,ai=0",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  89
+                      "ms":  65
                   },
                   {
                       "step":  "16_b3_sample_new_questions",
@@ -183,7 +183,7 @@
                       "sqlResult":  "",
                       "status":  "pass",
                       "pass":  true,
-                      "ms":  83230
+                      "ms":  96390
                   }
               ]
 }
