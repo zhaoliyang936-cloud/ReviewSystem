@@ -379,6 +379,7 @@ onMounted(refresh)
   margin: 0;
   padding: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-12);
 }
 
@@ -387,6 +388,7 @@ onMounted(refresh)
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-12);
+  min-width: 0;
   padding-bottom: var(--sp-12);
   border-bottom: 1px solid var(--line);
 }
