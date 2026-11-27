@@ -361,7 +361,7 @@ onBeforeUnmount(() => {
             {{ submitting ? '提交中…' : '提交任务' }}
           </BaseButton>
         </div>
-        <p class="ui-muted task-reason">任务开始后不能取消；草稿每隔 5 秒自动保存一次。</p>
+        <p class="ui-muted task-reason">任务开始后不能取消；停止输入满 5 秒将自动保存草稿。</p>
       </BaseCard>
     </template>
 

@@ -86,7 +86,7 @@ onMounted(() => {
   <div class="ui-shell">
     <header class="ui-topbar">
       <div>
-        <span class="ui-kicker">M09 · WRONG QUESTIONS</span>
+        <span class="ui-kicker">WRONG QUESTIONS</span>
         <h1 class="ui-title">错题本</h1>
       </div>
       <div class="ui-actions">

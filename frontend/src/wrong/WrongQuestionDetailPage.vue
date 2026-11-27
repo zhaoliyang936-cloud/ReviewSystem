@@ -206,7 +206,7 @@ onMounted(load)
   <div class="ui-shell">
     <header class="ui-topbar">
       <div>
-        <span class="ui-kicker">M09 · WRONG QUESTION DETAIL</span>
+        <span class="ui-kicker">WRONG QUESTION DETAIL</span>
         <h1 class="ui-title">错题详情</h1>
       </div>
       <div class="ui-actions">

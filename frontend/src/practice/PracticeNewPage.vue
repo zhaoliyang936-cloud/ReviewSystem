@@ -56,7 +56,7 @@ async function create() {
   <div class="ui-shell">
     <header class="ui-topbar">
       <div>
-        <span class="ui-kicker">M04 · PRACTICE</span>
+        <span class="ui-kicker">PRACTICE</span>
         <h1 class="ui-title">设置一次普通练习</h1>
       </div>
       <RouterLink to="/">返回首页</RouterLink>

@@ -55,7 +55,7 @@ onMounted(async () => {
         </select>
       </BaseField>
 
-      <BaseField v-slot="{ id }" label="检索关键词（中文按 ≥2 字二元组，英文/数字按完整词，大小写不敏感；留空仅按知识点过滤）">
+      <BaseField v-slot="{ id }" label="检索关键词（中文支持单字及二元组匹配，英文/数字按完整词，大小写不敏感；留空仅按知识点过滤）">
         <input :id="id" v-model="query" placeholder="例如：二叉树 前序遍历 DFS" />
       </BaseField>
 

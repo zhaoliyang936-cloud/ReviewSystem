@@ -84,7 +84,7 @@ onBeforeUnmount(() => {
           >
             菜单
           </BaseButton>
-          <span class="ui-eyebrow admin-brand-eyebrow">M03 · 课程内容工作台</span>
+          <span class="ui-eyebrow admin-brand-eyebrow">ADMIN · 课程内容工作台</span>
         </div>
         <span v-if="me" class="admin-user">{{ me.username }}</span>
       </header>
